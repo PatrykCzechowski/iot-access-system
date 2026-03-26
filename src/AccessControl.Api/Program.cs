@@ -1,4 +1,4 @@
-using AccessControl.Components;
+using AccessControl.Api.Components;
 
 var builder = WebApplication.CreateBuilder(args);
 
