@@ -12,5 +12,9 @@
         <ProjectReference Include="..\AccessControl.Infrastructure\AccessControl.Infrastructure.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="Endpoints\" />
+    </ItemGroup>
+
 </Project>
 
