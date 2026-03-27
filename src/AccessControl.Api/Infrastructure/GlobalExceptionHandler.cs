@@ -11,9 +11,12 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
         Exception exception, 
         CancellationToken cancellationToken)
     {
-        logger.LogError(exception, "An error occurred while processing the request: {Message}", exception.Message);
-
         var (statusCode, title, detail) = MapException(exception);
+
+        if (statusCode >= 500)
+            logger.LogError(exception, "An error occurred while processing the request: {Message}", exception.Message);
+        else
+            logger.LogWarning(exception, "Request failed ({StatusCode}): {Message}", statusCode, exception.Message);
 
         var problemDetails = new ProblemDetails
         {
@@ -50,17 +53,17 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
             UnauthorizedAccessException => (
                 StatusCodes.Status401Unauthorized,
                 "Unauthorized",
-                exception.Message),
+                "Authentication is required to access this resource."),
 
             KeyNotFoundException => (
                 StatusCodes.Status404NotFound,
                 "Not Found",
-                exception.Message),
+                "The requested resource was not found."),
 
             InvalidOperationException => (
                 StatusCodes.Status409Conflict,
                 "Conflict",
-                exception.Message),
+                "The request could not be completed due to a conflict."),
 
             _ => (
                 StatusCodes.Status500InternalServerError,
