@@ -4,9 +4,8 @@
         <TargetFramework>net10.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
-        <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
-      <UserSecretsId>6da23001-e6b7-4e44-8b8d-196e2faaca2d</UserSecretsId>
-  </PropertyGroup>
+        <UserSecretsId>6da23001-e6b7-4e44-8b8d-196e2faaca2d</UserSecretsId>
+    </PropertyGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\AccessControl.Application\AccessControl.Application.csproj" />
@@ -23,4 +22,3 @@
     </ItemGroup>
 
 </Project>
-

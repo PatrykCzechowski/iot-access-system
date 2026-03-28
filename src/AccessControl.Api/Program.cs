@@ -1,4 +1,3 @@
-using AccessControl.Api.Components;
 using AccessControl.Api.Endpoints;
 using AccessControl.Api.Infrastructure;
 using AccessControl.Application;
@@ -7,19 +6,14 @@ using AccessControl.Infrastructure.Persistence;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
-using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Application layer (MediatR, FluentValidation)
 builder.Services.AddApplication();
 
-// Infrastructure layer (DbContext, Identity, PostgreSQL)
+// Infrastructure layer (DbContext, Identity, JWT, PostgreSQL)
 builder.Services.AddInfrastructure(builder.Configuration);
-
-// Add services to the container.
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
@@ -38,8 +32,7 @@ builder.Services.AddRateLimiter(options =>
 
 var app = builder.Build();
 
-// WARNING: Auto-migration on startup is for development convenience only.
-// In production, apply migrations via CI/CD pipeline: dotnet ef database update
+// Auto-migration (development only)
 if (app.Environment.IsDevelopment())
 {
     await using var scope = app.Services.CreateAsyncScope();
@@ -47,22 +40,15 @@ if (app.Environment.IsDevelopment())
     await db.Database.MigrateAsync();
 }
 
-// Seed default admin account on first startup (idempotent — skips if admin already exists)
+// Seed default admin account (idempotent)
 {
     await using var scope = app.Services.CreateAsyncScope();
     var seeder = scope.ServiceProvider.GetRequiredService<AdminSeeder>();
     await seeder.SeedAsync();
 }
 
-// Exception handling MUST be first to catch exceptions from all subsequent middleware.
 app.UseExceptionHandler();
-
-// Configure the HTTP request pipeline.
-if (!app.Environment.IsDevelopment())
-{
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
-}
+app.UseHttpsRedirection();
 
 // Scalar UI (development only)
 if (app.Environment.IsDevelopment())
@@ -71,24 +57,16 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseRateLimiter();
+
 // Health
 app.MapHealthChecks("/health").AllowAnonymous().WithTags("Health");
 
 // Endpoints
 app.MapAuthEndpoints();
 
-app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
-app.UseHttpsRedirection();
 
-app.UseAuthentication();
-app.UseAuthorization();
-
-app.UseRateLimiter();
-
-app.UseAntiforgery();
-
-app.MapStaticAssets();
-app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
 
 app.Run();
