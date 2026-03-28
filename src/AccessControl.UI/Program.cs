@@ -22,7 +22,9 @@ builder.Services.AddScoped<IFlurlClient>(sp =>
         {
             var token = await localStorage.GetItemAsync<string>(AuthConstants.TokenKey);
             if (!string.IsNullOrWhiteSpace(token))
+            {
                 call.Request.WithOAuthBearerToken(token);
+            }
         });
 });
 

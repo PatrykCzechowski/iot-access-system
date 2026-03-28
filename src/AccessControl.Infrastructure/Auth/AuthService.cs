@@ -20,10 +20,14 @@ public class AuthService(
     {
         var user = await userManager.FindByEmailAsync(email);
         if (user is null)
+        {
             return new AuthResult.Failure("Invalid credentials");
+        }
 
         if (await userManager.IsLockedOutAsync(user))
+        {
             return new AuthResult.Failure("Account is temporarily locked. Try again later.");
+        }
 
         var passwordValid = await userManager.CheckPasswordAsync(user, password);
         if (!passwordValid)

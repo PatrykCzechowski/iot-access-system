@@ -53,14 +53,20 @@ public class CustomAuthStateProvider(
     private static IEnumerable<Claim> ParseClaimsFromJwt(string jwt)
     {
         var parts = jwt.Split('.');
-        if (parts.Length != 3) return [];
+        if (parts.Length != 3)
+        {
+            return [];
+        }
 
         try
         {
             var jsonBytes = ParseBase64WithoutPadding(parts[1]);
             var keyValuePairs = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonBytes);
 
-            if (keyValuePairs is null) return [];
+            if (keyValuePairs is null)
+            {
+                return [];
+            }
 
             return keyValuePairs.Select(kvp => new Claim(kvp.Key, kvp.Value.ToString()!));
         }

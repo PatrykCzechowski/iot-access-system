@@ -14,9 +14,13 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
         var (statusCode, title, detail) = MapException(exception);
 
         if (statusCode >= 500)
+        {
             logger.LogError(exception, "An error occurred while processing the request: {Message}", exception.Message);
+        }
         else
+        {
             logger.LogWarning(exception, "Request failed ({StatusCode}): {Message}", statusCode, exception.Message);
+        }
 
         var problemDetails = new ProblemDetails
         {

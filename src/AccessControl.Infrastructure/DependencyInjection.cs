@@ -57,8 +57,10 @@ public static class DependencyInjection
 
         var jwtKey = configuration["Jwt:Key"];
         if (string.IsNullOrWhiteSpace(jwtKey) || Encoding.UTF8.GetByteCount(jwtKey) < 32)
+        {
             throw new InvalidOperationException(
                 "JWT signing key must be at least 256 bits (32 bytes). Configure 'Jwt:Key' via user secrets or environment variable Jwt__Key.");
+        }
 
         services.Configure<JwtSettings>(configuration.GetSection("Jwt"));
 
@@ -104,7 +106,9 @@ public static class DependencyInjection
         var password = configuration["POSTGRES_PASSWORD"] ?? throw new InvalidOperationException("Database configuration missing: POSTGRES_PASSWORD");
 
         if (!int.TryParse(port, out var portNumber) || portNumber is < 1 or > 65535)
+        {
             throw new InvalidOperationException($"Invalid DB_PORT value: '{port}'");
+        }
 
         return new NpgsqlConnectionStringBuilder
         {
