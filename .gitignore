@@ -1,0 +1,81 @@
+## .NET / ASP.NET Core / Blazor
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+## Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+bld/
+build/
+msbuild.log
+msbuild.err
+msbuild.wrn
+
+## NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+*.nuget.props
+*.nuget.targets
+project.lock.json
+
+## Visual Studio
+.vs/
+.vscode/
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.sln.iml
+
+## JetBrains Rider
+.idea/
+riderModule.iml
+/_ReSharper.Caches/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+## User-specific files
+*.userprefs
+*.pidb
+*.booproj
+
+## Publish / Deploy
+publish/
+PublishProfiles/
+**/Properties/ServiceDependencies/
+
+## ASP.NET scaffolding
+ScaffoldingReadMe.txt
+
+## Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+## macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+## Secrets & Environment
+appsettings.*.local.json
+*.pfx
+*.key
+.env
+.env.*
+
+## Blazor specific
+**/wwwroot/_framework/
+scopedcss/
+
+## Web API / Database
+*.db
+*.sqlite

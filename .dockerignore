@@ -1,0 +1,12 @@
+**/.git
+**/.vs
+**/.vscode
+**/.idea
+**/bin
+**/obj
+**/node_modules
+**/.env
+**/.env.*
+**/docker-compose*.yml
+**/*.md
+**/*.sln.DotSettings
