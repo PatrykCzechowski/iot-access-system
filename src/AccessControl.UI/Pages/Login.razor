@@ -1,0 +1,93 @@
+@page "/login"
+@using AccessControl.UI.Models
+@using AccessControl.UI.Services
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Logowanie</PageTitle>
+
+<MudGrid Justify="Justify.Center" Class="mt-10">
+    <MudItem xs="12" sm="8" md="6" lg="4">
+        <MudCard Elevation="3" Class="pa-4">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h5" Align="Align.Center">Witaj ponownie</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+
+            <MudCardContent>
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+                }
+
+                <EditForm Model="_loginModel" OnValidSubmit="HandleLoginAsync">
+                    <DataAnnotationsValidator />
+
+                    <MudTextField @bind-Value="_loginModel.Email"
+                                  For="@(() => _loginModel.Email)"
+                                  Label="Adres Email"
+                                  InputType="InputType.Email"
+                                  Variant="Variant.Outlined"
+                                  ShrinkLabel="true" 
+                                  Class="mb-4" />
+
+                    <MudTextField @bind-Value="_loginModel.Password"
+                                  For="@(() => _loginModel.Password)"
+                                  Label="Hasło"
+                                  InputType="InputType.Password"
+                                  Variant="Variant.Outlined"
+                                  ShrinkLabel="true" 
+                                  Class="mb-4" />
+
+                    <MudButton ButtonType="ButtonType.Submit" 
+                               Variant="Variant.Filled" 
+                               Color="Color.Primary" 
+                               Size="Size.Large"
+                               FullWidth="true" 
+                               Disabled="@_isLoading">
+                        @if (_isLoading)
+                        {
+                            <MudProgressCircular Class="ms-n1 me-2" Size="Size.Small" Indeterminate="true" />
+                            <MudText>Logowanie...</MudText>
+                        }
+                        else
+                        {
+                            <MudText>Zaloguj się</MudText>
+                        }
+                    </MudButton>
+                </EditForm>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private readonly LoginModel _loginModel = new();
+    private bool _isLoading;
+    private string? _errorMessage;
+
+    private async Task HandleLoginAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            var result = await AuthService.LoginAsync(_loginModel);
+
+            if (result.IsSuccess)
+            {
+                Navigation.NavigateTo("/");
+            }
+            else
+            {
+                _errorMessage = result.ErrorMessage;
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}
