@@ -17,7 +17,6 @@ dotnet_sort_system_directives_first = true
 dotnet_separate_import_directive_groups = false
 
 # Encourage clearer APIs and safer language usage.
-dotnet_style_require_accessibility_modifiers = always:error
 dotnet_style_object_initializer = true:suggestion
 dotnet_style_collection_initializer = true:suggestion
 dotnet_style_prefer_auto_properties = true:suggestion

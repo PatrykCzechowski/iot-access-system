@@ -39,7 +39,7 @@ public class CustomAuthStateProvider(
     {
         var claims = ParseClaimsFromJwt(token);
         var identity = new ClaimsIdentity(claims, "jwt");
-        
+
         var authState = Task.FromResult(new AuthenticationState(new ClaimsPrincipal(identity)));
         NotifyAuthenticationStateChanged(authState);
     }

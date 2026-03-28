@@ -11,7 +11,7 @@ public static class AuthEndpoints
         var group = app.MapGroup("/api/auth")
             .WithTags("Authentication")
             .RequireRateLimiting("auth");
-        
+
         group.MapPost("/login", async (LoginCommand command, ISender sender, CancellationToken ct) =>
             {
                 var result = await sender.Send(command, ct);

@@ -30,9 +30,9 @@ public class AuthService(
             {
                 return successResult ?? new LoginResponse { ErrorMessage = "Brak danych z serwera." };
             }
-            
+
             await localStorage.SetItemAsync(AuthConstants.TokenKey, successResult.AccessToken);
-                
+
             authNotifier.NotifyUserLoggedIn(successResult.AccessToken);
 
             return successResult;
@@ -47,7 +47,7 @@ public class AuthService(
             return new LoginResponse { ErrorMessage = "Błąd połączenia z serwerem." };
         }
     }
-    
+
     public async Task LogoutAsync()
     {
         await localStorage.RemoveItemAsync(AuthConstants.TokenKey);

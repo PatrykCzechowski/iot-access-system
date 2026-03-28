@@ -7,8 +7,8 @@ namespace AccessControl.Api.Infrastructure;
 public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(
-        HttpContext httpContext, 
-        Exception exception, 
+        HttpContext httpContext,
+        Exception exception,
         CancellationToken cancellationToken)
     {
         var (statusCode, title, detail) = MapException(exception);
@@ -28,7 +28,7 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
             Title = title,
             Detail = detail,
             Instance = httpContext.Request.Path,
-            Type = $"https://httpstatuses.com/{statusCode}" 
+            Type = $"https://httpstatuses.com/{statusCode}"
         };
 
         problemDetails.Extensions.Add("traceId", httpContext.TraceIdentifier);
