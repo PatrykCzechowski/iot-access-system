@@ -1,13 +1,72 @@
-﻿@inherits LayoutComponentBase
+﻿@using AccessControl.UI.Services
+@inherits LayoutComponentBase
+@inject IAuthService AuthService
+@inject NavigationManager NavigationManager
 
 <MudThemeProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
+<MudPopoverProvider />
 
 <MudLayout>
+    <MudAppBar Elevation="1">
+        <AuthorizeView Context="authState">
+            <Authorized>
+                <MudHidden Breakpoint="Breakpoint.MdAndUp">
+                    <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
+                                   OnClick="ToggleDrawer" />
+                </MudHidden>
+            </Authorized>
+        </AuthorizeView>
+        <MudText Typo="Typo.h6" Class="ml-2">AccessControl</MudText>
+        <MudSpacer />
+        <AuthorizeView Context="authState">
+            <Authorized>
+                <MudMenu Icon="@Icons.Material.Filled.AccountCircle" Color="Color.Inherit"
+                         AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Dense="true">
+                    <MudMenuItem Icon="@Icons.Material.Filled.Settings" Href="/settings">
+                        Ustawienia
+                    </MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.Logout" OnClick="LogoutAsync">
+                        Wyloguj
+                    </MudMenuItem>
+                </MudMenu>
+            </Authorized>
+            <NotAuthorized>
+                <MudButton Color="Color.Inherit" Href="/login" StartIcon="@Icons.Material.Filled.Login">
+                    Zaloguj
+                </MudButton>
+            </NotAuthorized>
+        </AuthorizeView>
+    </MudAppBar>
+
+    <AuthorizeView Context="authState">
+        <Authorized>
+            <MudDrawer @bind-Open="_isNavDrawerOpen" Variant="DrawerVariant.Mini" ClipMode="DrawerClipMode.Always" Elevation="2">
+                <MudNavMenu>
+                    <MudNavLink Href="/" Icon="@Icons.Material.Filled.Home" Match="NavLinkMatch.All">
+                        Strona główna
+                    </MudNavLink>
+                </MudNavMenu>
+            </MudDrawer>
+        </Authorized>
+    </AuthorizeView>
+
     <MudMainContent>
         <MudContainer MaxWidth="MaxWidth.Large" Class="my-4 pt-4">
             @Body
         </MudContainer>
     </MudMainContent>
 </MudLayout>
+
+@code {
+    private bool _isNavDrawerOpen = false;
+
+    private void ToggleDrawer() => _isNavDrawerOpen = !_isNavDrawerOpen;
+
+    private async Task LogoutAsync()
+    {
+        await AuthService.LogoutAsync();
+        NavigationManager.NavigateTo("/login");
+    }
+}
