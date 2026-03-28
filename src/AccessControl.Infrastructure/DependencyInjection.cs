@@ -1,6 +1,10 @@
 using System.Text;
 using AccessControl.Application.Common.Interfaces;
+using AccessControl.Application.Devices.Abstractions;
 using AccessControl.Infrastructure.Auth;
+using AccessControl.Infrastructure.Devices;
+using AccessControl.Infrastructure.Devices.Adapters;
+using AccessControl.Infrastructure.Devices.Discovery;
 using AccessControl.Infrastructure.Identity;
 using AccessControl.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -40,6 +44,15 @@ public static class DependencyInjection
 
         services.AddScoped<IAuthService, AuthService>();
         services.AddTransient<AdminSeeder>();
+
+        services.AddSingleton<IDeviceAdapter, CardReaderDeviceAdapter>();
+        services.AddSingleton<IDeviceAdapter, KeypadReaderDeviceAdapter>();
+        services.AddSingleton<IDeviceAdapter, CardAndKeypadReaderDeviceAdapter>();
+        services.AddSingleton<IDeviceAdapter, DisplayExecutorDeviceAdapter>();
+        services.AddSingleton<IDeviceAdapter, LockPinExecutorDeviceAdapter>();
+        services.AddSingleton<IDeviceAdapterResolver, DeviceAdapterResolver>();
+        services.AddScoped<IDeviceRepository, DeviceRepository>();
+        services.AddSingleton<IDeviceDiscoveryService, MdnsDeviceDiscoveryService>();
 
         services
             .AddIdentityCore<ApplicationUser>(options =>
