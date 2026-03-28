@@ -1,4 +1,3 @@
-using AccessControl.Api.Components;
 using AccessControl.Api.Endpoints;
 using AccessControl.Api.Infrastructure;
 using AccessControl.Application;
@@ -16,10 +15,6 @@ builder.Services.AddApplication();
 
 // Infrastructure layer (DbContext, Identity, PostgreSQL)
 builder.Services.AddInfrastructure(builder.Configuration);
-
-// Add services to the container.
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
@@ -77,7 +72,6 @@ app.MapHealthChecks("/health").AllowAnonymous().WithTags("Health");
 // Endpoints
 app.MapAuthEndpoints();
 
-app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
 
 app.UseAuthentication();
@@ -85,10 +79,5 @@ app.UseAuthorization();
 
 app.UseRateLimiter();
 
-app.UseAntiforgery();
-
-app.MapStaticAssets();
-app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
 
 app.Run();
