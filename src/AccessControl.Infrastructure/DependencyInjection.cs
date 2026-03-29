@@ -6,6 +6,8 @@ using AccessControl.Infrastructure.Devices;
 using AccessControl.Infrastructure.Devices.Adapters;
 using AccessControl.Infrastructure.Devices.Discovery;
 using AccessControl.Infrastructure.Identity;
+using AccessControl.Infrastructure.Mqtt;
+using AccessControl.Infrastructure.Mqtt.Handlers;
 using AccessControl.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -52,7 +54,27 @@ public static class DependencyInjection
         services.AddSingleton<IDeviceAdapter, LockPinExecutorDeviceAdapter>();
         services.AddSingleton<IDeviceAdapterResolver, DeviceAdapterResolver>();
         services.AddScoped<IDeviceRepository, DeviceRepository>();
-        services.AddSingleton<IDeviceDiscoveryService, MdnsDeviceDiscoveryService>();
+        services.AddScoped<IAccessCardRepository, AccessCardRepository>();
+        services.Configure<DeviceDiscoveryOptions>(
+            configuration.GetSection(DeviceDiscoveryOptions.SectionName));
+        services.AddSingleton<IDeviceDiscoveryService, DeviceDiscoveryService>();
+
+        // MQTT
+        services.Configure<MqttOptions>(configuration.GetSection(MqttOptions.SectionName));
+        services.AddSingleton<MqttClientService>();
+        services.AddSingleton<IMqttService>(sp => sp.GetRequiredService<MqttClientService>());
+        services.AddHostedService(sp => sp.GetRequiredService<MqttClientService>());
+        services.AddHostedService<MqttBrokerMdnsAdvertiser>();
+        services.AddScoped<ICardAccessService, CardAccessService>();
+        services.AddScoped<ICardEnrollmentService, CardEnrollmentService>();
+
+        services.AddSingleton<HeartbeatThrottler>();
+        services.AddScoped<IMqttMessageHandler, HeartbeatMqttHandler>();
+        services.AddScoped<IMqttMessageHandler, AnnounceMqttHandler>();
+        services.AddScoped<IMqttMessageHandler, CardReadMqttHandler>();
+        services.AddScoped<IMqttMessageHandler, CardEnrolledMqttHandler>();
+        services.AddScoped<IMqttMessageHandler, ConfigAckMqttHandler>();
+        services.AddScoped<IMqttMessageHandler, LockStatusMqttHandler>();
 
         services
             .AddIdentityCore<ApplicationUser>(options =>
