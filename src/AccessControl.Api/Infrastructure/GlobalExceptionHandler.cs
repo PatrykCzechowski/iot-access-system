@@ -1,6 +1,8 @@
+using AccessControl.Domain.Exceptions;
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace AccessControl.Api.Infrastructure;
 
@@ -54,6 +56,11 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
                 "Validation Error",
                 string.Join("; ", validationEx.Errors.Select(e => e.ErrorMessage))),
 
+            DomainValidationException domainEx => (
+                StatusCodes.Status400BadRequest,
+                "Bad Request",
+                domainEx.Message),
+
             UnauthorizedAccessException => (
                 StatusCodes.Status401Unauthorized,
                 "Unauthorized",
@@ -64,10 +71,20 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
                 "Not Found",
                 "The requested resource was not found."),
 
-            InvalidOperationException => (
+            BusinessRuleException businessEx => (
                 StatusCodes.Status409Conflict,
                 "Conflict",
-                "The request could not be completed due to a conflict."),
+                businessEx.Message),
+
+            DbUpdateException => (
+                StatusCodes.Status409Conflict,
+                "Conflict",
+                "The operation failed due to a data conflict. A resource with the same unique value may already exist."),
+
+            InvalidOperationException => (
+                StatusCodes.Status500InternalServerError,
+                "Internal Server Error",
+                "An unexpected error occurred."),
 
             _ => (
                 StatusCodes.Status500InternalServerError,

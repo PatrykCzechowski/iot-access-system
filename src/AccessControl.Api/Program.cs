@@ -83,5 +83,6 @@ app.MapHealthChecks("/health").AllowAnonymous().WithTags("Health");
 // Endpoints
 app.MapAuthEndpoints();
 app.MapDeviceEndpoints();
+app.MapCardEndpoints();
 
 app.Run();

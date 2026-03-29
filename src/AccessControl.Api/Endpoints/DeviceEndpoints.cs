@@ -60,6 +60,44 @@ public static class DeviceEndpoints
             .Produces(StatusCodes.Status201Created)
             .ProducesValidationProblem();
 
+        // POST /api/devices/{id}/enrollment/start — start card enrollment mode
+        group.MapPost("/{id:guid}/enrollment/start",
+                async (Guid id, ISender sender, CancellationToken ct) =>
+                {
+                    await sender.Send(new StartEnrollmentCommand(id), ct);
+                    return Results.Ok();
+                })
+            .WithName("StartEnrollment")
+            .Produces(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict);
+
+        // POST /api/devices/{id}/enrollment/cancel — cancel card enrollment mode
+        group.MapPost("/{id:guid}/enrollment/cancel",
+                async (Guid id, ISender sender, CancellationToken ct) =>
+                {
+                    await sender.Send(new CancelEnrollmentCommand(id), ct);
+                    return Results.Ok();
+                })
+            .WithName("CancelEnrollment")
+            .Produces(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict);
+
+        // PUT /api/devices/{id}/config — update device dynamic configuration
+        group.MapPut("/{id:guid}/config",
+                async (Guid id, UpdateDeviceConfigRequest body, ISender sender, CancellationToken ct) =>
+                {
+                    await sender.Send(new UpdateDeviceConfigCommand(id, body.Settings), ct);
+                    return Results.NoContent();
+                })
+            .WithName("UpdateDeviceConfig")
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesValidationProblem();
+
         return app;
     }
+
+    private record UpdateDeviceConfigRequest(Dictionary<string, string> Settings);
 }
