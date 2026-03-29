@@ -3,17 +3,23 @@ using AccessControl.Application.Common.Interfaces;
 using AccessControl.Domain.Enums;
 using AccessControl.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Zeroconf;
 
 namespace AccessControl.Infrastructure.Devices.Discovery;
 
-public sealed class MdnsDeviceDiscoveryService(ILogger<MdnsDeviceDiscoveryService> logger)
+public sealed class DeviceDiscoveryService(
+    ILogger<DeviceDiscoveryService> logger,
+    IOptions<DeviceDiscoveryOptions> options)
     : IDeviceDiscoveryService
 {
     private const string ServiceType = "_accesscontrol._tcp.local.";
     private static readonly TimeSpan ScanTimeout = TimeSpan.FromSeconds(5);
+    private const int MaxMqttCacheSize = 500;
+    private TimeSpan MqttCacheTtl => TimeSpan.FromMinutes(options.Value.MqttCacheTtlMinutes);
 
     private readonly ConcurrentDictionary<Guid, DiscoveredDeviceInfo> _cache = new();
+    private readonly ConcurrentDictionary<Guid, (DiscoveredDeviceInfo Info, DateTime ReceivedAt)> _mqttCache = new();
 
     public async Task<IReadOnlyCollection<DiscoveredDeviceInfo>> ScanAsync(CancellationToken cancellationToken)
     {
@@ -30,7 +36,7 @@ public sealed class MdnsDeviceDiscoveryService(ILogger<MdnsDeviceDiscoveryServic
         catch (Exception ex)
         {
             logger.LogError(ex, "mDNS scan failed");
-            return _cache.Values.ToArray();
+            return MergeResults();
         }
 
         var discoveredIds = new HashSet<Guid>();
@@ -45,7 +51,7 @@ public sealed class MdnsDeviceDiscoveryService(ILogger<MdnsDeviceDiscoveryServic
             }
         }
 
-        // Remove stale devices that were not found in this scan
+        // Remove stale mDNS devices (MQTT-announced devices are kept separately)
         foreach (var key in _cache.Keys)
         {
             if (!discoveredIds.Contains(key))
@@ -54,18 +60,78 @@ public sealed class MdnsDeviceDiscoveryService(ILogger<MdnsDeviceDiscoveryServic
             }
         }
 
-        logger.LogInformation("mDNS scan completed. Found {Count} device(s)", _cache.Count);
-        return _cache.Values.ToArray();
+        EvictStaleMqttEntries();
+
+        var merged = MergeResults();
+        logger.LogInformation("Scan completed. Found {Count} device(s) (mDNS: {Mdns}, MQTT: {Mqtt})",
+            merged.Count, _cache.Count, _mqttCache.Count);
+        return merged;
     }
 
     public IReadOnlyCollection<DiscoveredDeviceInfo> GetCached()
     {
-        return _cache.Values.ToArray();
+        return MergeResults();
     }
 
     public DiscoveredDeviceInfo? GetByHardwareId(Guid hardwareId)
     {
-        return _cache.TryGetValue(hardwareId, out var info) ? info : null;
+        if (_cache.TryGetValue(hardwareId, out var info))
+        {
+            return info;
+        }
+
+        if (_mqttCache.TryGetValue(hardwareId, out var entry) &&
+            DateTime.UtcNow - entry.ReceivedAt < MqttCacheTtl)
+        {
+            return entry.Info;
+        }
+
+        return null;
+    }
+
+    public void RegisterAnnouncement(DiscoveredDeviceInfo info)
+    {
+        _mqttCache.AddOrUpdate(info.HardwareId, (info, DateTime.UtcNow), (_, _) => (info, DateTime.UtcNow));
+
+        if (_mqttCache.Count > MaxMqttCacheSize)
+        {
+            EvictStaleMqttEntries();
+        }
+    }
+
+    private void EvictStaleMqttEntries()
+    {
+        var now = DateTime.UtcNow;
+        foreach (var key in _mqttCache.Keys)
+        {
+            if (_mqttCache.TryGetValue(key, out var entry) && now - entry.ReceivedAt > MqttCacheTtl)
+            {
+                _mqttCache.TryRemove(key, out _);
+            }
+        }
+    }
+
+    private IReadOnlyCollection<DiscoveredDeviceInfo> MergeResults()
+    {
+        var merged = new Dictionary<Guid, DiscoveredDeviceInfo>();
+        var now = DateTime.UtcNow;
+
+        // MQTT-announced devices first (lower priority), skip stale
+        foreach (var (key, (mqttInfo, receivedAt)) in _mqttCache)
+        {
+            if (now - receivedAt <= MqttCacheTtl)
+            {
+                merged[key] = mqttInfo;
+            }
+        }
+
+        // mDNS devices override (higher priority — more detailed)
+        foreach (var (key, value) in _cache)
+        {
+            merged[key] = value;
+        }
+
+        return merged.Values.ToArray();
     }
 
     private DiscoveredDeviceInfo? ParseHost(IZeroconfHost host)
