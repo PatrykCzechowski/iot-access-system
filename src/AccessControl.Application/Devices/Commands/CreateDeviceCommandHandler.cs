@@ -2,6 +2,7 @@ using System.Numerics;
 using AccessControl.Application.Common.Interfaces;
 using AccessControl.Application.Devices.Abstractions;
 using AccessControl.Domain.Entities;
+using AccessControl.Domain.Exceptions;
 using MediatR;
 
 namespace AccessControl.Application.Devices.Commands;
@@ -20,7 +21,7 @@ public sealed class CreateDeviceCommandHandler(
             .ExistsByHardwareIdAsync(request.HardwareId, cancellationToken);
         if (alreadyExists)
         {
-            throw new InvalidOperationException(
+            throw new BusinessRuleException(
                 $"Device with hardware ID '{request.HardwareId}' is already registered.");
         }
 
@@ -31,7 +32,7 @@ public sealed class CreateDeviceCommandHandler(
         var adapter = adapterResolver.ResolveByFeatures(discovered.Features)
             .OrderBy(a => BitOperations.PopCount((uint)a.SupportedFeatures))
             .FirstOrDefault()
-            ?? throw new InvalidOperationException(
+            ?? throw new BusinessRuleException(
                 $"No adapter supports the features '{discovered.Features}' of this device.");
 
         var device = Device.Create(
