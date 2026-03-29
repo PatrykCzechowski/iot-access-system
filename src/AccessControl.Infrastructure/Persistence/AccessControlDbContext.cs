@@ -9,6 +9,7 @@ public class AccessControlDbContext(DbContextOptions<AccessControlDbContext> opt
     : IdentityDbContext<ApplicationUser>(options)
 {
     public DbSet<Device> Devices => Set<Device>();
+    public DbSet<AccessCard> AccessCards => Set<AccessCard>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

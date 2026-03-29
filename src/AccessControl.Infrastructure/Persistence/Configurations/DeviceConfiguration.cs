@@ -39,6 +39,14 @@ public sealed class DeviceConfiguration : IEntityTypeConfiguration<Device>
         builder.Property(d => d.UpdatedAt)
             .IsRequired();
 
+        builder.Property<Dictionary<string, string>>("_configuration")
+            .HasField("_configuration")
+            .UsePropertyAccessMode(PropertyAccessMode.Field)
+            .HasColumnName("configuration")
+            .HasColumnType("jsonb")
+            .HasDefaultValueSql("'{}'::jsonb")
+            .IsRequired();
+
         builder.HasIndex(d => d.ZoneId);
     }
 }
