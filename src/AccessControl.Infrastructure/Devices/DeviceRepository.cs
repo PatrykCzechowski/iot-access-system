@@ -1,5 +1,6 @@
 using AccessControl.Application.Common.Interfaces;
 using AccessControl.Domain.Entities;
+using AccessControl.Domain.Enums;
 using AccessControl.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,6 +20,34 @@ public sealed class DeviceRepository(AccessControlDbContext dbContext) : IDevice
         return await dbContext.Devices
             .AsNoTracking()
             .FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+    }
+
+    public async Task<Device?> GetByIdTrackedAsync(Guid id, CancellationToken cancellationToken)
+    {
+        return await dbContext.Devices
+            .FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+    }
+
+    public async Task<Device?> GetByHardwareIdAsync(Guid hardwareId, CancellationToken cancellationToken)
+    {
+        return await dbContext.Devices
+            .AsNoTracking()
+            .FirstOrDefaultAsync(d => d.HardwareId == hardwareId, cancellationToken);
+    }
+
+    public async Task<Device?> GetByHardwareIdTrackedAsync(Guid hardwareId, CancellationToken cancellationToken)
+    {
+        return await dbContext.Devices
+            .FirstOrDefaultAsync(d => d.HardwareId == hardwareId, cancellationToken);
+    }
+
+    public async Task<IReadOnlyCollection<Device>> GetOnlineByZoneAndFeatureAsync(
+        Guid zoneId, DeviceFeatures feature, CancellationToken cancellationToken)
+    {
+        return await dbContext.Devices
+            .AsNoTracking()
+            .Where(d => d.ZoneId == zoneId && d.Features.HasFlag(feature) && d.Status == DeviceStatus.Online)
+            .ToArrayAsync(cancellationToken);
     }
 
     public async Task AddAsync(Device device, CancellationToken cancellationToken)
