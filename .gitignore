@@ -54,6 +54,9 @@ PublishProfiles/
 ## ASP.NET scaffolding
 ScaffoldingReadMe.txt
 
+## PlatformIO
+.pio/
+
 ## Windows
 Thumbs.db
 ehthumbs.db
@@ -71,6 +74,7 @@ appsettings.*.local.json
 *.key
 .env
 .env.*
+mosquitto/password_file
 
 ## Blazor specific
 **/wwwroot/_framework/

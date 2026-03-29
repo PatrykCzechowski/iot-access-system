@@ -1,4 +1,35 @@
 ﻿services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: access_control_mqtt
+    restart: always
+    environment:
+      MQTT_USERNAME: ${MQTT_USERNAME}
+      MQTT_PASSWORD: ${MQTT_PASSWORD}
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mosquitto_data:/mosquitto/data
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        touch /mosquitto/config/password_file
+        mosquitto_passwd -b /mosquitto/config/password_file "$$MQTT_USERNAME" "$$MQTT_PASSWORD"
+        exec mosquitto -c /mosquitto/config/mosquitto.conf
+    healthcheck:
+      test: [ "CMD-SHELL", "mosquitto_sub -t '$$SYS/#' -C 1 -i healthcheck -u $$MQTT_USERNAME -P $$MQTT_PASSWORD -W 3" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   database:
     image: postgres:18-alpine
     container_name: access_control_db
@@ -27,6 +58,8 @@
     depends_on:
       database:
         condition: service_healthy
+      mosquitto:
+        condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
@@ -41,9 +74,14 @@
       Admin__Email: ${ADMIN_EMAIL}
       Admin__Password: ${ADMIN_PASSWORD}
       Admin__FullName: ${ADMIN_FULLNAME}
+      Mqtt__Host: mosquitto
+      Mqtt__Port: 1883
+      Mqtt__Username: ${MQTT_USERNAME}
+      Mqtt__Password: ${MQTT_PASSWORD}
     ports:
       - "8080:8080"
 
 volumes:
   postgres_data:
+  mosquitto_data:
 
