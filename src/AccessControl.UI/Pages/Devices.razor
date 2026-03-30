@@ -1,0 +1,78 @@
+@page "/devices"
+@using Flurl.Http
+@attribute [Authorize]
+@inject IFlurlClient Http
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Devices</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-4">Devices</MudText>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+}
+else if (_devices.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">No registered devices.</MudAlert>
+}
+else
+{
+    <MudList T="DeviceItem" ReadOnly="true">
+        @foreach (var device in _devices)
+        {
+            <MudListItem OnClick="@(() => Nav.NavigateTo($"/devices/{device.Id}"))" Style="cursor: pointer;">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.Router"
+                                 Color="@(DeviceHelpers.IsOnline(device.Status) ? Color.Success : Color.Error)" />
+                        <MudStack Spacing="0">
+                            <MudText Typo="Typo.body1">@device.Name</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Type: @DeviceHelpers.FormatAdapterType(device.AdapterType)</MudText>
+                        </MudStack>
+                    </MudStack>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Color="@(DeviceHelpers.IsOnline(device.Status) ? Color.Success : Color.Error)">
+                            @device.Status
+                        </MudChip>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            @device.HardwareId.ToString()[..8]…
+                        </MudText>
+                    </MudStack>
+                </MudStack>
+            </MudListItem>
+            <MudDivider />
+        }
+    </MudList>
+}
+
+@code {
+    private List<DeviceItem> _devices = [];
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _devices = await Http
+                .Request("api/devices")
+                .GetJsonAsync<List<DeviceItem>>();
+        }
+        catch (FlurlHttpException ex) when (ex.StatusCode == 401)
+        {
+            Snackbar.Add("Unauthorized.", Severity.Error);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Failed to load devices.", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}
+

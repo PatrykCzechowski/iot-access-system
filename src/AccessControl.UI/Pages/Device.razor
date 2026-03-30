@@ -1,0 +1,117 @@
+@page "/devices/{id:guid}"
+@using Flurl.Http
+@attribute [Authorize]
+@inject IFlurlClient Http
+@inject ISnackbar Snackbar
+
+<PageTitle>@(_device?.Name ?? "Device")</PageTitle>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+}
+else if (_device is null)
+{
+    <MudAlert Severity="Severity.Error">Device not found.</MudAlert>
+}
+else
+{
+    <MudText Typo="Typo.h5" Class="mb-4">@_device.Name</MudText>
+
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudText Typo="Typo.subtitle1" Class="mb-3">General</MudText>
+                <MudStack Spacing="2">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Status</MudText>
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@(DeviceHelpers.IsOnline(_device.Status) ? Color.Success : Color.Error)">
+                            @_device.Status
+                        </MudChip>
+                    </MudStack>
+                    <MudDivider />
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Adapter type</MudText>
+                        <MudText Typo="Typo.body2">@DeviceHelpers.FormatAdapterType(_device.AdapterType)</MudText>
+                    </MudStack>
+                    <MudDivider />
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Hardware ID</MudText>
+                        <MudText Typo="Typo.caption" Style="font-family: monospace;">@_device.HardwareId</MudText>
+                    </MudStack>
+                    <MudDivider />
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">ID</MudText>
+                        <MudText Typo="Typo.caption" Style="font-family: monospace;">@_device.Id</MudText>
+                    </MudStack>
+                    <MudDivider />
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Created</MudText>
+                        <MudText Typo="Typo.body2">@_device.CreatedAt.ToLocalTime().ToString("g")</MudText>
+                    </MudStack>
+                    <MudDivider />
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Last updated</MudText>
+                        <MudText Typo="Typo.body2">@_device.UpdatedAt.ToLocalTime().ToString("g")</MudText>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudText Typo="Typo.subtitle1" Class="mb-3">Features</MudText>
+                @if (_device.Features == 0)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">None</MudText>
+                }
+                else
+                {
+                    <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
+                        @foreach (var feature in DeviceHelpers.GetFeatures(_device.Features))
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">
+                                @feature
+                            </MudChip>
+                        }
+                    </MudStack>
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private DeviceItem? _device;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _device = await Http
+                .Request($"api/devices/{Id}")
+                .GetJsonAsync<DeviceItem>();
+        }
+        catch (FlurlHttpException ex) when (ex.StatusCode == 404)
+        {
+            Snackbar.Add("Device not found.", Severity.Error);
+        }
+        catch (FlurlHttpException ex) when (ex.StatusCode == 401)
+        {
+            Snackbar.Add("Unauthorized.", Severity.Error);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Failed to load device.", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}
+
