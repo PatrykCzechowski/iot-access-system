@@ -26,7 +26,7 @@ Api (minimal API endpoints, global exception handler)
 - HTTP via Flurl.Http with auto-injected Bearer token
 - Auth state from JWT parsed client-side (`CustomAuthStateProvider`)
 - Token stored in browser LocalStorage (Blazored)
-- UI labels in **Polish** ("Logowanie", "Zaloguj się", etc.)
+- UI labels in **English** ("Login", "Log in", "Devices", etc.)
 
 **Firmware** — ESP32-S3 (Arduino Nano ESP32) via PlatformIO:
 

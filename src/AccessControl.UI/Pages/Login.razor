@@ -4,14 +4,14 @@
 @inject IAuthService AuthService
 @inject NavigationManager Navigation
 
-<PageTitle>Logowanie</PageTitle>
+<PageTitle>Login</PageTitle>
 
 <MudGrid Justify="Justify.Center" Class="mt-10">
     <MudItem xs="12" sm="8" md="6" lg="4">
         <MudCard Elevation="3" Class="pa-4">
             <MudCardHeader>
                 <CardHeaderContent>
-                    <MudText Typo="Typo.h5" Align="Align.Center">Witaj ponownie</MudText>
+                    <MudText Typo="Typo.h5" Align="Align.Center">Welcome back</MudText>
                 </CardHeaderContent>
             </MudCardHeader>
 
@@ -26,7 +26,7 @@
 
                     <MudTextField @bind-Value="_loginModel.Email"
                                   For="@(() => _loginModel.Email)"
-                                  Label="Adres Email"
+                                  Label="Email"
                                   InputType="InputType.Email"
                                   Variant="Variant.Outlined"
                                   ShrinkLabel="true" 
@@ -34,7 +34,7 @@
 
                     <MudTextField @bind-Value="_loginModel.Password"
                                   For="@(() => _loginModel.Password)"
-                                  Label="Hasło"
+                                  Label="Password"
                                   InputType="InputType.Password"
                                   Variant="Variant.Outlined"
                                   ShrinkLabel="true" 
@@ -49,11 +49,11 @@
                         @if (_isLoading)
                         {
                             <MudProgressCircular Class="ms-n1 me-2" Size="Size.Small" Indeterminate="true" />
-                            <MudText>Logowanie...</MudText>
+                            <MudText>Logging in...</MudText>
                         }
                         else
                         {
-                            <MudText>Zaloguj się</MudText>
+                            <MudText>Log in</MudText>
                         }
                     </MudButton>
                 </EditForm>
