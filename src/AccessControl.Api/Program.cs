@@ -69,6 +69,7 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
+    app.MapDevSeedEndpoints();
 }
 
 app.UseCors("BlazorWasmPolicy");

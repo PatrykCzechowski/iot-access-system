@@ -27,9 +27,15 @@ public static class DependencyInjection
     {
         var connectionString = BuildConnectionString(configuration);
 
-        services.AddDbContext<AccessControlDbContext>(options =>
+        services.AddSingleton<NpgsqlDataSource>(_ =>
+            new NpgsqlDataSourceBuilder(connectionString)
+                .EnableDynamicJson()
+                .Build());
+
+        services.AddDbContext<AccessControlDbContext>((sp, options) =>
         {
-            options.UseNpgsql(connectionString, npgsql =>
+            var ds = sp.GetRequiredService<NpgsqlDataSource>();
+            options.UseNpgsql(ds, npgsql =>
             {
                 npgsql.MigrationsAssembly(typeof(AccessControlDbContext).Assembly.FullName);
                 npgsql.EnableRetryOnFailure(
@@ -46,6 +52,7 @@ public static class DependencyInjection
 
         services.AddScoped<IAuthService, AuthService>();
         services.AddTransient<AdminSeeder>();
+        services.AddScoped<DevDataSeeder>();
 
         services.AddSingleton<IDeviceAdapter, CardReaderDeviceAdapter>();
         services.AddSingleton<IDeviceAdapter, KeypadReaderDeviceAdapter>();

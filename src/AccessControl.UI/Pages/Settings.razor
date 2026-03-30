@@ -1,0 +1,94 @@
+@page "/settings"
+@using Flurl.Http
+@using Microsoft.AspNetCore.Components.WebAssembly.Hosting
+@attribute [Authorize]
+@inject IFlurlClient Http
+@inject ISnackbar Snackbar
+@inject IWebAssemblyHostEnvironment Env
+
+<PageTitle>Settings</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-4">Settings</MudText>
+
+@if (Env.IsDevelopment())
+{
+    <MudPaper Class="pa-4 mb-4" Elevation="1">
+        <MudStack Spacing="2">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.BugReport" Color="Color.Warning" />
+                <MudText Typo="Typo.h6">Developer Tools</MudText>
+                <MudChip T="string" Color="Color.Warning" Size="Size.Small" Variant="Variant.Outlined">DEV</MudChip>
+            </MudStack>
+
+            <MudDivider />
+
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.subtitle1">Seed Test Data</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Adds sample users, devices, and access cards. The operation is idempotent.
+                    </MudText>
+                </MudStack>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Warning"
+                           StartIcon="@Icons.Material.Filled.DataArray"
+                           OnClick="SeedDataAsync"
+                           Disabled="_seeding">
+                    @if (_seeding)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        <span>Seeding...</span>
+                    }
+                    else
+                    {
+                        <span>Seed data</span>
+                    }
+                </MudButton>
+            </MudStack>
+
+            @if (_seedResult is not null)
+            {
+                <MudAlert Severity="Severity.Success" Dense="true">
+                    Added: <strong>@_seedResult.SeededUsers</strong> users,
+                    <strong>@_seedResult.SeededDevices</strong> devices,
+                    <strong>@_seedResult.SeededCards</strong> access cards.
+                </MudAlert>
+            }
+        </MudStack>
+    </MudPaper>
+}
+
+@code {
+    private bool _seeding;
+    private SeedResultDto? _seedResult;
+
+    private async Task SeedDataAsync()
+    {
+        _seeding = true;
+        _seedResult = null;
+
+        try
+        {
+            _seedResult = await Http
+                .Request("api/dev/seed")
+                .PostAsync()
+                .ReceiveJson<SeedResultDto>();
+
+            Snackbar.Add("Data seeded successfully.", Severity.Success);
+        }
+        catch (FlurlHttpException ex) when (ex.StatusCode == 404)
+        {
+            Snackbar.Add("Seed endpoint not available (dev environment only).", Severity.Warning);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Failed to seed data.", Severity.Error);
+        }
+        finally
+        {
+            _seeding = false;
+        }
+    }
+
+    private sealed record SeedResultDto(int SeededUsers, int SeededDevices, int SeededCards);
+}
