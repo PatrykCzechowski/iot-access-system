@@ -48,5 +48,10 @@ public sealed class DeviceConfiguration : IEntityTypeConfiguration<Device>
             .IsRequired();
 
         builder.HasIndex(d => d.ZoneId);
+
+        builder.HasOne<AccessZone>()
+            .WithMany()
+            .HasForeignKey(d => d.ZoneId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

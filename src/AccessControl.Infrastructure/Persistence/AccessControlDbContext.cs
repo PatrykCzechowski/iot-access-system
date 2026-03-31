@@ -10,6 +10,8 @@ public class AccessControlDbContext(DbContextOptions<AccessControlDbContext> opt
 {
     public DbSet<Device> Devices => Set<Device>();
     public DbSet<AccessCard> AccessCards => Set<AccessCard>();
+    public DbSet<AccessZone> AccessZones => Set<AccessZone>();
+    public DbSet<AccessLog> AccessLogs => Set<AccessLog>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
