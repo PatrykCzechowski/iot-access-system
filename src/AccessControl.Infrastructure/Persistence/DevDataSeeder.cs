@@ -11,22 +11,59 @@ public class DevDataSeeder(
     AccessControlDbContext db)
 {
     // Deterministic IDs for dev seed data
-    private static readonly Guid Zone1Id         = Guid.Parse("11111111-0000-0000-0000-000000000001");
-    private static readonly Guid Zone2Id         = Guid.Parse("22222222-0000-0000-0000-000000000002");
+    private static readonly Guid Zone1Id         = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000001");
+    private static readonly Guid Zone2Id         = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000002");
     private static readonly Guid ReaderZone1Hwid = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001");
     private static readonly Guid LockZone1Hwid   = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000002");
     private static readonly Guid ReaderZone2Hwid = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000003");
 
     public async Task<SeedResult> SeedAsync(CancellationToken cancellationToken = default)
     {
+        // Identity's UserManager commits immediately — cannot participate in an EF transaction.
         var (userIds, seededUsers) = await SeedUsersAsync();
 
-        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
-        var seededDevices = await SeedDevicesAsync(cancellationToken);
-        var seededCards = await SeedCardsAsync(userIds, cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+        // Wrap in execution strategy to support NpgsqlRetryingExecutionStrategy + transactions.
+        var strategy = db.Database.CreateExecutionStrategy();
+        var (seededZones, seededDevices, seededCards) = await strategy.ExecuteAsync(async (CancellationToken ct) =>
+        {
+            await using var transaction = await db.Database.BeginTransactionAsync(ct);
+            var (zone1Id, zone2Id, zoneCount) = await SeedZonesAsync(ct);
+            var deviceCount = await SeedDevicesAsync(zone1Id, zone2Id, ct);
+            var cardCount = await SeedCardsAsync(userIds, zone1Id, zone2Id, ct);
+            await transaction.CommitAsync(ct);
+            return (zoneCount, deviceCount, cardCount);
+        }, cancellationToken);
 
-        return new SeedResult(seededUsers, seededDevices, seededCards);
+        return new SeedResult(seededUsers, seededZones, seededDevices, seededCards);
+    }
+
+    private async Task<(Guid Zone1Id, Guid Zone2Id, int NewCount)> SeedZonesAsync(CancellationToken cancellationToken)
+    {
+        int added = 0;
+
+        // Look up by deterministic ID first, fall back to name (handles DB seeded before deterministic IDs).
+        // TODO: Remove name fallback after all dev DBs are migrated to deterministic IDs.
+        var zone1 = await db.AccessZones.FindAsync([Zone1Id], cancellationToken)
+                    ?? await db.AccessZones.FirstOrDefaultAsync(z => z.Name == "Strefa 1", cancellationToken)
+                    ?? AddZone(Zone1Id, "Strefa 1", "Główne wejście — piętro 0");
+        var zone2 = await db.AccessZones.FindAsync([Zone2Id], cancellationToken)
+                    ?? await db.AccessZones.FirstOrDefaultAsync(z => z.Name == "Strefa 2", cancellationToken)
+                    ?? AddZone(Zone2Id, "Strefa 2", "Serwerownia — piętro 1");
+
+        if (added > 0)
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+
+        return (zone1.Id, zone2.Id, added);
+
+        AccessZone AddZone(Guid id, string name, string? description)
+        {
+            var z = AccessZone.Create(name, description, id);
+            db.AccessZones.Add(z);
+            added++;
+            return z;
+        }
     }
 
     private async Task<(Dictionary<string, string> Ids, int NewCount)> SeedUsersAsync()
@@ -74,7 +111,7 @@ public class DevDataSeeder(
         return (ids, newCount);
     }
 
-    private async Task<int> SeedDevicesAsync(CancellationToken cancellationToken)
+    private async Task<int> SeedDevicesAsync(Guid zone1Id, Guid zone2Id, CancellationToken cancellationToken)
     {
         var devicesToSeed = new[]
         {
@@ -82,7 +119,7 @@ public class DevDataSeeder(
             {
                 HardwareId  = ReaderZone1Hwid,
                 Name        = "Czytnik kart — Strefa 1",
-                ZoneId      = Zone1Id,
+                ZoneId      = zone1Id,
                 AdapterType = DeviceAdapterType.CardReader,
                 Features    = DeviceFeatures.CardReader,
             },
@@ -90,7 +127,7 @@ public class DevDataSeeder(
             {
                 HardwareId  = LockZone1Hwid,
                 Name        = "Zamek elektryczny — Strefa 1",
-                ZoneId      = Zone1Id,
+                ZoneId      = zone1Id,
                 AdapterType = DeviceAdapterType.LockPinExecutor,
                 Features    = DeviceFeatures.LockControl,
             },
@@ -98,7 +135,7 @@ public class DevDataSeeder(
             {
                 HardwareId  = ReaderZone2Hwid,
                 Name        = "Czytnik kart — Strefa 2",
-                ZoneId      = Zone2Id,
+                ZoneId      = zone2Id,
                 AdapterType = DeviceAdapterType.CardReader,
                 Features    = DeviceFeatures.CardReader,
             },
@@ -134,6 +171,8 @@ public class DevDataSeeder(
 
     private async Task<int> SeedCardsAsync(
         Dictionary<string, string> userIds,
+        Guid zone1Id,
+        Guid zone2Id,
         CancellationToken cancellationToken)
     {
         userIds.TryGetValue("jan.kowalski@dev.local", out var janId);
@@ -141,10 +180,10 @@ public class DevDataSeeder(
 
         var cardsToSeed = new[]
         {
-            new { CardUid = "AABBCCDD", ZoneId = Zone1Id, UserId = janId,  Label = (string?)"Karta Jana Kowalskiego",   IsActive = true  },
-            new { CardUid = "EEFF0011", ZoneId = Zone1Id, UserId = (string?)null, Label = (string?)"Karta niezarejestrowana", IsActive = true  },
-            new { CardUid = "22334455", ZoneId = Zone2Id, UserId = annaId, Label = (string?)"Karta Anny Nowak",          IsActive = true  },
-            new { CardUid = "66778899", ZoneId = Zone2Id, UserId = (string?)null, Label = (string?)"Karta nieaktywna (demo)",  IsActive = false },
+            new { CardUid = "AABBCCDD", ZoneId = zone1Id, UserId = janId,  Label = (string?)"Karta Jana Kowalskiego",   IsActive = true  },
+            new { CardUid = "EEFF0011", ZoneId = zone1Id, UserId = (string?)null, Label = (string?)"Karta niezarejestrowana", IsActive = true  },
+            new { CardUid = "22334455", ZoneId = zone2Id, UserId = annaId, Label = (string?)"Karta Anny Nowak",          IsActive = true  },
+            new { CardUid = "66778899", ZoneId = zone2Id, UserId = (string?)null, Label = (string?)"Karta nieaktywna (demo)",  IsActive = false },
         };
 
         var uids = cardsToSeed.Select(c => c.CardUid).ToList();
@@ -185,5 +224,5 @@ public class DevDataSeeder(
         return added;
     }
 
-    public record SeedResult(int SeededUsers, int SeededDevices, int SeededCards);
+    public record SeedResult(int SeededUsers, int SeededZones, int SeededDevices, int SeededCards);
 }
