@@ -1,0 +1,269 @@
+@using Flurl.Http
+@inject IZoneService ZoneService
+@inject IDeviceService DeviceService
+@inject IAccessHubService HubService
+@inject ISnackbar Snackbar
+@implements IDisposable
+
+<MudDialog>
+    <DialogContent>
+        @if (_step == EnrollStep.SelectDevice)
+        {
+            <MudStack Spacing="3">
+                @if (_loading)
+                {
+                    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+                }
+                else
+                {
+                    <MudSelect T="Guid" @bind-Value="_selectedZoneId" Label="Zone" Variant="Variant.Outlined"
+                               AnchorOrigin="Origin.BottomCenter" Required="true">
+                        @foreach (var zone in _zones)
+                        {
+                            <MudSelectItem T="Guid" Value="zone.Id">@zone.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudSelect T="Guid" @bind-Value="_selectedDeviceId" Label="Card Reader" Variant="Variant.Outlined"
+                               AnchorOrigin="Origin.BottomCenter" Required="true"
+                               Disabled="FilteredDevices.Count == 0">
+                        @foreach (var device in FilteredDevices)
+                        {
+                            <MudSelectItem T="Guid" Value="device.Id">
+                                @device.Name
+                                @if (DeviceHelpers.IsOnline(device.Status))
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Class="ml-2">Online</MudChip>
+                                }
+                                else
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Default" Class="ml-2">Offline</MudChip>
+                                }
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    @if (FilteredDevices.Count == 0 && _selectedZoneId != Guid.Empty)
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true">
+                            No card readers found in this zone.
+                        </MudAlert>
+                    }
+                }
+            </MudStack>
+        }
+        else if (_step == EnrollStep.Waiting)
+        {
+            <MudStack AlignItems="AlignItems.Center" Spacing="4" Class="pa-4">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+                <MudText Typo="Typo.h6">Waiting for card...</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Place a card on the reader. Time remaining: @_remainingSeconds s
+                </MudText>
+            </MudStack>
+        }
+        else if (_step == EnrollStep.Result)
+        {
+            <MudStack Spacing="3">
+                @if (_enrollResult is { Success: true })
+                {
+                    <MudAlert Severity="Severity.Success">
+                        Card <strong>@_enrollResult.CardUid</strong> enrolled successfully
+                        in zone <strong>@_enrollResult.ZoneName</strong>.
+                    </MudAlert>
+                }
+                else if (_enrollResult is not null)
+                {
+                    <MudAlert Severity="Severity.Error">
+                        @_enrollResult.Message
+                    </MudAlert>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Warning">
+                        Enrollment timed out. No card was detected.
+                    </MudAlert>
+                }
+            </MudStack>
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (_step == EnrollStep.SelectDevice)
+        {
+            <MudButton OnClick="Cancel">Cancel</MudButton>
+            <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                       OnClick="StartEnrollment"
+                       Disabled="_selectedDeviceId == Guid.Empty || _starting">
+                @if (_starting)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                Start Enrollment
+            </MudButton>
+        }
+        else if (_step == EnrollStep.Waiting)
+        {
+            <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="CancelEnrollment">
+                Cancel
+            </MudButton>
+        }
+        else if (_step == EnrollStep.Result)
+        {
+            <MudButton OnClick="Close" Variant="Variant.Filled" Color="Color.Primary">
+                Close
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private List<ZoneItem> _zones = [];
+    private List<DeviceItem> _devices = [];
+    private Guid _selectedZoneId;
+    private Guid _selectedDeviceId;
+    private bool _loading = true;
+    private bool _starting;
+    private EnrollStep _step = EnrollStep.SelectDevice;
+    private CardEnrolledItem? _enrollResult;
+    private int _remainingSeconds = 30;
+    private System.Timers.Timer? _countdownTimer;
+
+    private List<DeviceItem> FilteredDevices => _devices
+        .Where(d => _selectedZoneId == Guid.Empty || d.ZoneId == _selectedZoneId)
+        .Where(d => DeviceHelpers.HasCardReader(d.Features))
+        .ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var zonesTask = ZoneService.GetZonesAsync();
+            var devicesTask = DeviceService.GetDevicesAsync();
+            _zones = await zonesTask;
+            _devices = await devicesTask;
+
+            if (_zones.Count > 0)
+                _selectedZoneId = _zones[0].Id;
+        }
+        catch
+        {
+            Snackbar.Add("Failed to load data.", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task StartEnrollment()
+    {
+        _starting = true;
+        try
+        {
+            HubService.OnCardEnrolled += OnCardEnrolled;
+
+            if (!HubService.IsConnected)
+                await HubService.StartAsync();
+
+            await DeviceService.StartEnrollmentAsync(_selectedDeviceId);
+
+            _step = EnrollStep.Waiting;
+            _remainingSeconds = 30;
+            StartCountdown();
+        }
+        catch (FlurlHttpException)
+        {
+            Snackbar.Add("Failed to start enrollment.", Severity.Error);
+            HubService.OnCardEnrolled -= OnCardEnrolled;
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Failed to start enrollment.", Severity.Error);
+            HubService.OnCardEnrolled -= OnCardEnrolled;
+        }
+        finally
+        {
+            _starting = false;
+        }
+    }
+
+    private void OnCardEnrolled(CardEnrolledItem item)
+    {
+        if (item.DeviceId != _selectedDeviceId) return;
+
+        _enrollResult = item;
+        _step = EnrollStep.Result;
+        StopCountdown();
+        HubService.OnCardEnrolled -= OnCardEnrolled;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void StartCountdown()
+    {
+        _countdownTimer = new System.Timers.Timer(1000);
+        _countdownTimer.Elapsed += async (_, _) =>
+        {
+            await InvokeAsync(() =>
+            {
+                _remainingSeconds--;
+                if (_remainingSeconds <= 0)
+                {
+                    StopCountdown();
+                    if (_step == EnrollStep.Waiting)
+                    {
+                        _step = EnrollStep.Result;
+                        _enrollResult = null;
+                        HubService.OnCardEnrolled -= OnCardEnrolled;
+                    }
+                }
+                StateHasChanged();
+            });
+        };
+        _countdownTimer.Start();
+    }
+
+    private void StopCountdown()
+    {
+        _countdownTimer?.Stop();
+        _countdownTimer?.Dispose();
+        _countdownTimer = null;
+    }
+
+    private async Task CancelEnrollment()
+    {
+        try
+        {
+            await DeviceService.CancelEnrollmentAsync(_selectedDeviceId);
+        }
+        catch
+        {
+            // Best effort
+        }
+        StopCountdown();
+        HubService.OnCardEnrolled -= OnCardEnrolled;
+        MudDialog.Cancel();
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Close()
+    {
+        MudDialog.Close(DialogResult.Ok(_enrollResult?.Success == true));
+    }
+
+    public void Dispose()
+    {
+        StopCountdown();
+        HubService.OnCardEnrolled -= OnCardEnrolled;
+    }
+
+    private enum EnrollStep
+    {
+        SelectDevice,
+        Waiting,
+        Result
+    }
+}

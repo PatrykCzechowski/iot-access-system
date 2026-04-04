@@ -1,0 +1,114 @@
+@using Flurl.Http
+@inject IZoneService ZoneService
+@inject IDeviceService DeviceService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">
+                <MudText Typo="Typo.body2"><b>Model:</b> @Device.Model</MudText>
+                <MudText Typo="Typo.body2"><b>IP:</b> @Device.IpAddress</MudText>
+                <MudText Typo="Typo.body2"><b>MAC:</b> @Device.MacAddress</MudText>
+                <MudText Typo="Typo.body2"><b>Features:</b> @string.Join(", ", DeviceHelpers.GetFeatures(Device.Features))</MudText>
+            </MudAlert>
+
+            <MudTextField @bind-Value="_name" Label="Device Name" Required="true" MaxLength="100"
+                          Variant="Variant.Outlined" />
+
+            @if (_zonesLoading)
+            {
+                <MudProgressLinear Indeterminate="true" />
+            }
+            else
+            {
+                <MudSelect T="Guid" @bind-Value="_selectedZoneId" Label="Zone" Required="true"
+                           Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter">
+                    @foreach (var zone in _zones)
+                    {
+                        <MudSelectItem T="Guid" Value="zone.Id">@zone.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="_submitting">
+            @if (_submitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Add Device
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public DiscoveredDeviceItem Device { get; set; } = default!;
+
+    private string _name = string.Empty;
+    private Guid _selectedZoneId;
+    private List<ZoneItem> _zones = [];
+    private bool _zonesLoading = true;
+    private bool _submitting;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _name = Device.Model;
+        try
+        {
+            _zones = await ZoneService.GetZonesAsync();
+            if (_zones.Count > 0)
+                _selectedZoneId = _zones[0].Id;
+        }
+        catch
+        {
+            Snackbar.Add("Failed to load zones.", Severity.Error);
+        }
+        finally
+        {
+            _zonesLoading = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(_name))
+        {
+            Snackbar.Add("Name is required.", Severity.Warning);
+            return;
+        }
+        if (_selectedZoneId == Guid.Empty)
+        {
+            Snackbar.Add("Please select a zone.", Severity.Warning);
+            return;
+        }
+
+        _submitting = true;
+        try
+        {
+            await DeviceService.AddDeviceAsync(Device.HardwareId, _name.Trim(), _selectedZoneId);
+
+            Snackbar.Add($"Device '{_name.Trim()}' added successfully.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (FlurlHttpException)
+        {
+            Snackbar.Add("Failed to add device.", Severity.Error);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Failed to add device.", Severity.Error);
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+}

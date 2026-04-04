@@ -1,0 +1,87 @@
+@using Flurl.Http
+@inject ICardService CardService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">
+                <MudText Typo="Typo.body2"><b>UID:</b> @Card.CardUid</MudText>
+            </MudAlert>
+
+            <MudTextField @bind-Value="_label" Label="Label" MaxLength="100"
+                          Variant="Variant.Outlined" />
+
+            <MudSelect T="Guid" @bind-Value="_selectedZoneId" Label="Zone" Required="true"
+                       Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter">
+                @foreach (var zone in Zones)
+                {
+                    <MudSelectItem T="Guid" Value="zone.Id">@zone.Name</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudSwitch T="bool" @bind-Value="_isActive" Label="Active" Color="Color.Success" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="_submitting">
+            @if (_submitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Save
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public CardItem Card { get; set; } = default!;
+    [Parameter] public List<ZoneItem> Zones { get; set; } = [];
+
+    private string? _label;
+    private Guid _selectedZoneId;
+    private bool _isActive;
+    private bool _submitting;
+
+    protected override void OnInitialized()
+    {
+        _label = Card.Label;
+        _selectedZoneId = Card.ZoneId;
+        _isActive = Card.IsActive;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        if (_selectedZoneId == Guid.Empty)
+        {
+            Snackbar.Add("Please select a zone.", Severity.Warning);
+            return;
+        }
+
+        _submitting = true;
+        try
+        {
+            await CardService.UpdateCardAsync(Card.Id, _selectedZoneId, Card.UserId, _label, _isActive);
+            Snackbar.Add("Card updated.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (FlurlHttpException)
+        {
+            Snackbar.Add("Failed to update card.", Severity.Error);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Failed to update card.", Severity.Error);
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+}

@@ -1,0 +1,151 @@
+@page "/access-logs"
+@using Flurl.Http
+@attribute [Authorize]
+@inject IFlurlClient Http
+@inject IAccessHubService AccessHub
+@inject ISnackbar Snackbar
+@implements IAsyncDisposable
+
+<PageTitle>Access Logs</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-4">Access Logs</MudText>
+
+@if (_liveEvents.Count > 0)
+{
+    <MudText Typo="Typo.h6" Class="mb-2">
+        <MudIcon Icon="@Icons.Material.Filled.FiberManualRecord" Color="Color.Error" Size="Size.Small" Class="mr-1" />
+        Live
+    </MudText>
+
+    <MudTable Items="_liveEvents" Hover="true" Dense="true" Elevation="2" Class="mb-6">
+        <HeaderContent>
+            <MudTh>Time</MudTh>
+            <MudTh>Card UID</MudTh>
+            <MudTh>Device</MudTh>
+            <MudTh>Zone</MudTh>
+            <MudTh>Result</MudTh>
+            <MudTh>User</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.Timestamp.ToLocalTime().ToString("HH:mm:ss")</MudTd>
+            <MudTd><MudText Typo="Typo.body2" Style="font-family: monospace;">@context.CardUid</MudText></MudTd>
+            <MudTd>@context.DeviceName</MudTd>
+            <MudTd>@context.ZoneName</MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small"
+                         Color="@(context.AccessGranted ? Color.Success : Color.Error)">
+                    @(context.AccessGranted ? "Granted" : "Denied")
+                </MudChip>
+            </MudTd>
+            <MudTd>@(context.UserName ?? "—")</MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+
+<MudText Typo="Typo.h6" Class="mb-2">History</MudText>
+
+<MudTable ServerData="LoadHistoryAsync" @ref="_historyTable" Hover="true" Dense="true" Elevation="2">
+    <HeaderContent>
+        <MudTh>Time</MudTh>
+        <MudTh>Card UID</MudTh>
+        <MudTh>Device</MudTh>
+        <MudTh>Zone</MudTh>
+        <MudTh>Result</MudTh>
+        <MudTh>User</MudTh>
+        <MudTh>Message</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</MudTd>
+        <MudTd><MudText Typo="Typo.body2" Style="font-family: monospace;">@context.CardUid</MudText></MudTd>
+        <MudTd>@context.DeviceName</MudTd>
+        <MudTd>@context.ZoneName</MudTd>
+        <MudTd>
+            <MudChip T="string" Size="Size.Small"
+                     Color="@(context.AccessGranted ? Color.Success : Color.Error)">
+                @(context.AccessGranted ? "Granted" : "Denied")
+            </MudChip>
+        </MudTd>
+        <MudTd>@(context.UserName ?? "—")</MudTd>
+        <MudTd>@(context.Message ?? "")</MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager />
+    </PagerContent>
+    <LoadingContent>
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    </LoadingContent>
+    <NoRecordsContent>
+        <MudAlert Severity="Severity.Info">No access logs found.</MudAlert>
+    </NoRecordsContent>
+</MudTable>
+
+@code {
+    private readonly List<AccessLogItem> _liveEvents = [];
+    private MudTable<AccessLogItem>? _historyTable;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AccessHub.OnCardScanned += HandleCardScanned;
+
+        try
+        {
+            await AccessHub.StartAsync();
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Failed to connect to live feed.", Severity.Warning);
+        }
+    }
+
+    private void HandleCardScanned(AccessLogItem item)
+    {
+        InvokeAsync(() =>
+        {
+            _liveEvents.Insert(0, item);
+
+            if (_liveEvents.Count > 50)
+            {
+                _liveEvents.RemoveAt(_liveEvents.Count - 1);
+            }
+
+            StateHasChanged();
+        });
+    }
+
+    private async Task<TableData<AccessLogItem>> LoadHistoryAsync(TableState state, CancellationToken ct)
+    {
+        try
+        {
+            var result = await Http
+                .Request("api/access-logs")
+                .SetQueryParams(new
+                {
+                    page = state.Page + 1,
+                    pageSize = state.PageSize
+                })
+                .GetJsonAsync<AccessLogPagedResult>(cancellationToken: ct);
+
+            return new TableData<AccessLogItem>
+            {
+                Items = result.Items,
+                TotalItems = result.TotalCount
+            };
+        }
+        catch (FlurlHttpException ex) when (ex.StatusCode == 401)
+        {
+            Snackbar.Add("Unauthorized.", Severity.Error);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Failed to load access logs.", Severity.Error);
+        }
+
+        return new TableData<AccessLogItem> { Items = [], TotalItems = 0 };
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        AccessHub.OnCardScanned -= HandleCardScanned;
+        await AccessHub.StopAsync();
+    }
+}

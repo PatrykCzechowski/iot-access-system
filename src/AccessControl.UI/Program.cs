@@ -29,6 +29,10 @@ builder.Services.AddScoped<IFlurlClient>(sp =>
 });
 
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IZoneService, ZoneService>();
+builder.Services.AddScoped<ICardService, CardService>();
+builder.Services.AddScoped<IDeviceService, DeviceService>();
+builder.Services.AddSingleton<IAccessHubService, AccessHubService>();
 
 builder.Services.AddMudServices();
 builder.Services.AddBlazoredLocalStorage();

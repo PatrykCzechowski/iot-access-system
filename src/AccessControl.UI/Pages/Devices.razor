@@ -4,10 +4,76 @@
 @inject IFlurlClient Http
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
+@inject IDialogService DialogService
 
 <PageTitle>Devices</PageTitle>
 
-<MudText Typo="Typo.h5" Class="mb-4">Devices</MudText>
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+    <MudText Typo="Typo.h5">Devices</MudText>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Search"
+               OnClick="ScanForDevices" Disabled="_scanning">
+        @if (_scanning)
+        {
+            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+        }
+        Scan for Devices
+    </MudButton>
+</MudStack>
+
+@if (_discovered.Count > 0)
+{
+    <MudText Typo="Typo.h6" Class="mb-2">
+        <MudIcon Icon="@Icons.Material.Filled.Wifi" Class="mr-1" />
+        Discovered Devices
+    </MudText>
+
+    <MudTable Items="_discovered" Hover="true" Dense="true" Elevation="2" Class="mb-6">
+        <HeaderContent>
+            <MudTh>Model</MudTh>
+            <MudTh>IP Address</MudTh>
+            <MudTh>Features</MudTh>
+            <MudTh>Firmware</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh Style="width: 120px;"></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.Model</MudTd>
+            <MudTd><MudText Typo="Typo.body2" Style="font-family: monospace;">@context.IpAddress</MudText></MudTd>
+            <MudTd>
+                <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
+                    @foreach (var feature in DeviceHelpers.GetFeatures(context.Features))
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">@feature</MudChip>
+                    }
+                </MudStack>
+            </MudTd>
+            <MudTd>@context.FirmwareVersion</MudTd>
+            <MudTd>
+                @if (context.AlreadyRegistered)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Default">Registered</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Success">New</MudChip>
+                }
+            </MudTd>
+            <MudTd>
+                @if (!context.AlreadyRegistered)
+                {
+                    <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="@(() => AddDevice(context))">
+                        Add
+                    </MudButton>
+                }
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+
+<MudText Typo="Typo.h6" Class="mb-2">Registered Devices</MudText>
 
 @if (_loading)
 {
@@ -15,7 +81,7 @@
 }
 else if (_devices.Count == 0)
 {
-    <MudAlert Severity="Severity.Info">No registered devices.</MudAlert>
+    <MudAlert Severity="Severity.Info">No registered devices. Use "Scan for Devices" to discover and add devices.</MudAlert>
 }
 else
 {
@@ -51,10 +117,18 @@ else
 
 @code {
     private List<DeviceItem> _devices = [];
+    private List<DiscoveredDeviceItem> _discovered = [];
     private bool _loading = true;
+    private bool _scanning;
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadRegisteredDevicesAsync();
+    }
+
+    private async Task LoadRegisteredDevicesAsync()
+    {
+        _loading = true;
         try
         {
             _devices = await Http
@@ -72,6 +146,61 @@ else
         finally
         {
             _loading = false;
+        }
+    }
+
+    private async Task ScanForDevices()
+    {
+        _scanning = true;
+        try
+        {
+            _discovered = await Http
+                .Request("api/devices/scan")
+                .PostAsync()
+                .ReceiveJson<List<DiscoveredDeviceItem>>();
+
+            if (_discovered.Count == 0)
+            {
+                Snackbar.Add("No devices found on the network.", Severity.Info);
+            }
+            else
+            {
+                Snackbar.Add($"Found {_discovered.Count} device(s).", Severity.Success);
+            }
+        }
+        catch (FlurlHttpException ex) when (ex.StatusCode == 401)
+        {
+            Snackbar.Add("Unauthorized.", Severity.Error);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Device scan failed.", Severity.Error);
+        }
+        finally
+        {
+            _scanning = false;
+        }
+    }
+
+    private async Task AddDevice(DiscoveredDeviceItem device)
+    {
+        var parameters = new DialogParameters<AddDeviceDialog>
+        {
+            { x => x.Device, device }
+        };
+
+        var dialog = await DialogService.ShowAsync<AddDeviceDialog>("Add Device", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            await LoadRegisteredDevicesAsync();
+            _discovered = _discovered
+                .Select(d => d.HardwareId == device.HardwareId
+                    ? d with { AlreadyRegistered = true }
+                    : d)
+                .ToList();
         }
     }
 }

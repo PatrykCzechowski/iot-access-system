@@ -6,12 +6,28 @@ public sealed record DeviceItem(
     string Name,
     int AdapterType,
     int Features,
+    Guid ZoneId,
     string Status,
     DateTime CreatedAt,
     DateTime UpdatedAt);
 
+public sealed record DiscoveredDeviceItem(
+    Guid HardwareId,
+    string Model,
+    string IpAddress,
+    string MacAddress,
+    int Features,
+    string FirmwareVersion,
+    DateTime DiscoveredAt,
+    bool AlreadyRegistered);
+
 public static class DeviceHelpers
 {
+    private const int CardReaderFeature = 1;
+
+    public static bool HasCardReader(int features) =>
+        (features & CardReaderFeature) != 0;
+
     public static bool IsOnline(string status) =>
         string.Equals(status, "Online", StringComparison.OrdinalIgnoreCase);
 

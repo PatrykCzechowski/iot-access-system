@@ -1,0 +1,187 @@
+@page "/cards"
+@using Flurl.Http
+@using AccessControl.UI.Services
+@attribute [Authorize]
+@inject ICardService CardService
+@inject IZoneService ZoneService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Cards</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+    <MudText Typo="Typo.h5">Access Cards</MudText>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.CreditCard"
+               OnClick="OpenEnrollDialog">
+        Enroll Card
+    </MudButton>
+</MudStack>
+
+<MudStack Row="true" Spacing="3" Class="mb-4">
+    <MudTextField @bind-Value="_searchText" @bind-Value:after="UpdateFilteredCards"
+                  Label="Search" Placeholder="UID or label..."
+                  Variant="Variant.Outlined" Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true"
+                  DebounceInterval="300" Style="max-width: 300px;" />
+    <MudSelect T="Guid?" @bind-Value="_filterZoneId" @bind-Value:after="UpdateFilteredCards"
+               Label="Zone" Variant="Variant.Outlined"
+               Clearable="true" Style="max-width: 250px;" AnchorOrigin="Origin.BottomCenter">
+        @foreach (var zone in _zones)
+        {
+            <MudSelectItem T="Guid?" Value="@((Guid?)zone.Id)">@zone.Name</MudSelectItem>
+        }
+    </MudSelect>
+</MudStack>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+}
+else if (_filteredCards.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">No access cards found.</MudAlert>
+}
+else
+{
+    <MudTable Items="_filteredCards" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" Striped="true">
+        <HeaderContent>
+            <MudTh>UID</MudTh>
+            <MudTh>Label</MudTh>
+            <MudTh>Zone</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Created</MudTh>
+            <MudTh Style="width: 120px;">Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="UID">
+                <MudText Typo="Typo.body2"><strong>@context.CardUid</strong></MudText>
+            </MudTd>
+            <MudTd DataLabel="Label">
+                @(context.Label ?? "—")
+            </MudTd>
+            <MudTd DataLabel="Zone">
+                @GetZoneName(context.ZoneId)
+            </MudTd>
+            <MudTd DataLabel="Status">
+                @if (context.IsActive)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Success">Active</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Default">Inactive</MudChip>
+                }
+            </MudTd>
+            <MudTd DataLabel="Created">@context.CreatedAt.ToString("yyyy-MM-dd HH:mm")</MudTd>
+            <MudTd>
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                               OnClick="@(() => OpenEditDialog(context))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                               OnClick="@(() => DeleteCardAsync(context))" />
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+
+@code {
+    private List<CardItem> _cards = [];
+    private List<CardItem> _filteredCards = [];
+    private List<ZoneItem> _zones = [];
+    private bool _loading = true;
+    private string? _searchText;
+    private Guid? _filterZoneId;
+
+    private void UpdateFilteredCards()
+    {
+        _filteredCards = _cards
+            .Where(c => _filterZoneId is null || c.ZoneId == _filterZoneId)
+            .Where(c => string.IsNullOrEmpty(_searchText)
+                || c.CardUid.Contains(_searchText, StringComparison.OrdinalIgnoreCase)
+                || (c.Label?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false))
+            .ToList();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _loading = true;
+        try
+        {
+            var cardsTask = CardService.GetCardsAsync();
+            var zonesTask = ZoneService.GetZonesAsync();
+            _cards = await cardsTask;
+            _zones = await zonesTask;
+            UpdateFilteredCards();
+        }
+        catch (FlurlHttpException ex) when (ex.StatusCode == 401)
+        {
+            Snackbar.Add("Unauthorized.", Severity.Error);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Failed to load cards.", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private string GetZoneName(Guid zoneId) =>
+        _zones.FirstOrDefault(z => z.Id == zoneId)?.Name ?? "Unknown";
+
+    private async Task OpenEnrollDialog()
+    {
+        var dialog = await DialogService.ShowAsync<EnrollCardDialog>("Enroll Card",
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            await LoadDataAsync();
+        }
+    }
+
+    private async Task OpenEditDialog(CardItem card)
+    {
+        var parameters = new DialogParameters<EditCardDialog>
+        {
+            { x => x.Card, card },
+            { x => x.Zones, _zones }
+        };
+
+        var dialog = await DialogService.ShowAsync<EditCardDialog>("Edit Card", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            await LoadDataAsync();
+        }
+    }
+
+    private async Task DeleteCardAsync(CardItem card)
+    {
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Delete Card",
+            $"Are you sure you want to delete card \"{card.CardUid}\"?",
+            yesText: "Delete", cancelText: "Cancel");
+
+        if (confirmed != true) return;
+
+        try
+        {
+            await CardService.DeleteCardAsync(card.Id);
+            Snackbar.Add("Card deleted.", Severity.Success);
+            await LoadDataAsync();
+        }
+        catch (FlurlHttpException)
+        {
+            Snackbar.Add("Failed to delete card.", Severity.Error);
+        }
+    }
+}
