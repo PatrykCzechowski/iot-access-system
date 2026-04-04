@@ -21,20 +21,17 @@ public static partial class MqttTopics
     [GeneratedRegex(@"^accesscontrol/([^/]+)/")]
     private static partial Regex HardwareIdPattern();
 
-    // Publish topics (concrete device)
-    public static string CardResult(Guid hardwareId) => $"{Prefix}/{hardwareId}/card/result";
+    // Publish topics (server → device)
     public static string LockCommand(Guid hardwareId) => $"{Prefix}/{hardwareId}/lock/command";
-    public static string EnrollmentStart(Guid hardwareId) => $"{Prefix}/{hardwareId}/enrollment/start";
-    public static string EnrollmentCancel(Guid hardwareId) => $"{Prefix}/{hardwareId}/enrollment/cancel";
-    public static string EnrollmentResult(Guid hardwareId) => $"{Prefix}/{hardwareId}/enrollment/result";
-    public static string ConfigUpdate(Guid hardwareId) => $"{Prefix}/{hardwareId}/config/update";
+    public static string CardEnroll(Guid hardwareId) => $"{Prefix}/{hardwareId}/card/enroll";
+    public static string ConfigSet(Guid hardwareId) => $"{Prefix}/{hardwareId}/config/set";
 
-    // Subscribe patterns (MQTT wildcards)
+    // Subscribe patterns (device → server, MQTT wildcards)
     public static readonly string[] SubscribePatterns =
     [
         $"{Prefix}/+/announce",
         $"{Prefix}/+/heartbeat",
-        $"{Prefix}/+/card/read",
+        $"{Prefix}/+/card/scanned",
         $"{Prefix}/+/card/enrolled",
         $"{Prefix}/+/config/ack",
         $"{Prefix}/+/lock/status"

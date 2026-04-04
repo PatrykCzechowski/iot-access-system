@@ -119,6 +119,11 @@ public sealed class MqttClientService : BackgroundService, IMqttService
                     await SubscribeAsync(ct);
                     return;
                 }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    _logger.LogInformation("MQTT connection cancelled during shutdown");
+                    return;
+                }
                 catch (Exception ex) when (!ct.IsCancellationRequested)
                 {
                     _logger.LogWarning(ex, "MQTT connection failed. Retrying in {Delay}s...", delay.TotalSeconds);

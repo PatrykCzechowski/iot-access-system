@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AccessControl.Application.Common;
 using AccessControl.Application.Common.Interfaces;
 using AccessControl.Domain.Enums;
@@ -26,8 +27,9 @@ public sealed class CancelEnrollmentCommandHandler(
             throw new BusinessRuleException("Device is not online.");
         }
 
-        var topic = MqttTopics.EnrollmentCancel(device.HardwareId);
+        var topic = MqttTopics.CardEnroll(device.HardwareId);
+        var payload = JsonSerializer.Serialize(new { action = "cancel" });
 
-        await mqttService.PublishAsync(topic, "{}", cancellationToken: cancellationToken);
+        await mqttService.PublishAsync(topic, payload, cancellationToken: cancellationToken);
     }
 }

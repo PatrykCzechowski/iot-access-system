@@ -12,6 +12,8 @@ public sealed partial class CardEnrolledMqttHandler(
 {
     public bool CanHandle(string topic) => TopicPattern().IsMatch(topic);
 
+    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
+
     public async Task HandleAsync(string topic, string payload, CancellationToken cancellationToken)
     {
         if (!MqttTopics.TryExtractHardwareId(topic, out var hardwareId))
@@ -28,7 +30,7 @@ public sealed partial class CardEnrolledMqttHandler(
         CardEnrolledMessage? msg;
         try
         {
-            msg = JsonSerializer.Deserialize<CardEnrolledMessage>(payload);
+            msg = JsonSerializer.Deserialize<CardEnrolledMessage>(payload, JsonOptions);
         }
         catch (JsonException ex)
         {

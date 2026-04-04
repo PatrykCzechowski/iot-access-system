@@ -7,7 +7,7 @@ public class AccessZone
     private AccessZone() { }
 
     public Guid Id { get; init; }
-    public required string Name { get; init; }
+    public string Name { get; private set; } = null!;
     public string? Description { get; private set; }
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; private set; }
@@ -35,6 +35,18 @@ public class AccessZone
             CreatedAt = now,
             UpdatedAt = now,
         };
+    }
+
+    public void UpdateName(string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        if (name.Length > 100)
+        {
+            throw new DomainValidationException("Zone name cannot exceed 100 characters.");
+        }
+
+        Name = name.Trim();
+        UpdatedAt = DateTime.UtcNow;
     }
 
     public void UpdateDescription(string? description)

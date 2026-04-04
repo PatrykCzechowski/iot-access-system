@@ -6,12 +6,12 @@ using Microsoft.Extensions.Logging;
 
 namespace AccessControl.Infrastructure.Mqtt.Handlers;
 
-public sealed partial class CardReadMqttHandler(
+public sealed partial class CardScannedMqttHandler(
     ICardAccessService cardAccessService,
-    ILogger<CardReadMqttHandler> logger) : IMqttMessageHandler
+    ILogger<CardScannedMqttHandler> logger) : IMqttMessageHandler
 {
     public bool CanHandle(string topic) => TopicPattern().IsMatch(topic);
-
+    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
     public async Task HandleAsync(string topic, string payload, CancellationToken cancellationToken)
     {
         if (!MqttTopics.TryExtractHardwareId(topic, out var hardwareId))
@@ -21,32 +21,32 @@ public sealed partial class CardReadMqttHandler(
 
         if (string.IsNullOrWhiteSpace(payload))
         {
-            logger.LogWarning("Empty card read payload from {HardwareId}", hardwareId);
+            logger.LogWarning("Empty card scanned payload from {HardwareId}", hardwareId);
             return;
         }
 
-        CardReadMessage? msg;
+        CardScannedMessage? msg;
         try
         {
-            msg = JsonSerializer.Deserialize<CardReadMessage>(payload);
+            msg = JsonSerializer.Deserialize<CardScannedMessage>(payload, JsonOptions);
         }
         catch (JsonException ex)
         {
-            logger.LogWarning(ex, "Malformed JSON in card read payload from {HardwareId}", hardwareId);
+            logger.LogWarning(ex, "Malformed JSON in card scanned payload from {HardwareId}", hardwareId);
             return;
         }
 
         if (msg is null || string.IsNullOrWhiteSpace(msg.Uid))
         {
-            logger.LogWarning("Invalid card read payload from {HardwareId}", hardwareId);
+            logger.LogWarning("Invalid card scanned payload from {HardwareId}", hardwareId);
             return;
         }
 
         await cardAccessService.ValidateAndGrantAccessAsync(hardwareId, msg.Uid, cancellationToken);
     }
 
-    [GeneratedRegex(@"^accesscontrol/([^/]+)/card/read$")]
+    [GeneratedRegex(@"^accesscontrol/([^/]+)/card/scanned$")]
     private static partial Regex TopicPattern();
 
-    private record CardReadMessage(string Uid);
+    private record CardScannedMessage(string Uid);
 }

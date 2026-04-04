@@ -9,6 +9,7 @@ using AccessControl.Infrastructure.Identity;
 using AccessControl.Infrastructure.Mqtt;
 using AccessControl.Infrastructure.Mqtt.Handlers;
 using AccessControl.Infrastructure.Persistence;
+using AccessControl.Infrastructure.Persistence.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -62,6 +63,8 @@ public static class DependencyInjection
         services.AddSingleton<IDeviceAdapterResolver, DeviceAdapterResolver>();
         services.AddScoped<IDeviceRepository, DeviceRepository>();
         services.AddScoped<IAccessCardRepository, AccessCardRepository>();
+        services.AddScoped<IAccessZoneRepository, AccessZoneRepository>();
+        services.AddScoped<IAccessLogRepository, AccessLogRepository>();
         services.Configure<DeviceDiscoveryOptions>(
             configuration.GetSection(DeviceDiscoveryOptions.SectionName));
         services.AddSingleton<IDeviceDiscoveryService, DeviceDiscoveryService>();
@@ -76,9 +79,9 @@ public static class DependencyInjection
         services.AddScoped<ICardEnrollmentService, CardEnrollmentService>();
 
         services.AddSingleton<HeartbeatThrottler>();
-        services.AddScoped<IMqttMessageHandler, HeartbeatMqttHandler>();
         services.AddScoped<IMqttMessageHandler, AnnounceMqttHandler>();
-        services.AddScoped<IMqttMessageHandler, CardReadMqttHandler>();
+        services.AddScoped<IMqttMessageHandler, HeartbeatMqttHandler>();
+        services.AddScoped<IMqttMessageHandler, CardScannedMqttHandler>();
         services.AddScoped<IMqttMessageHandler, CardEnrolledMqttHandler>();
         services.AddScoped<IMqttMessageHandler, ConfigAckMqttHandler>();
         services.AddScoped<IMqttMessageHandler, LockStatusMqttHandler>();
@@ -118,6 +121,22 @@ public static class DependencyInjection
                     ValidIssuer = configuration["Jwt:Issuer"],
                     ValidAudience = configuration["Jwt:Audience"],
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+                };
+
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        var accessToken = context.Request.Query["access_token"];
+                        var path = context.HttpContext.Request.Path;
+
+                        if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                        {
+                            context.Token = accessToken;
+                        }
+
+                        return Task.CompletedTask;
+                    }
                 };
             });
 

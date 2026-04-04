@@ -1,6 +1,8 @@
 using AccessControl.Api.Endpoints;
+using AccessControl.Api.Hubs;
 using AccessControl.Api.Infrastructure;
 using AccessControl.Application;
+using AccessControl.Application.Common.Interfaces;
 using AccessControl.Infrastructure;
 using AccessControl.Infrastructure.Persistence;
 using Microsoft.AspNetCore.RateLimiting;
@@ -15,6 +17,12 @@ builder.Services.AddApplication();
 // Infrastructure layer (DbContext, Identity, JWT, PostgreSQL)
 builder.Services.AddInfrastructure(builder.Configuration);
 
+builder.Services.AddSignalR();
+
+// Registered here (not in Infrastructure DI) because AccessNotificationService
+// depends on IHubContext<AccessControlHub> which lives in the Api layer.
+builder.Services.AddScoped<IAccessNotificationService, AccessNotificationService>();
+
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
@@ -28,7 +36,7 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins(corsOrigins)
             .WithMethods("GET", "POST", "PUT", "DELETE")
-            .WithHeaders("Content-Type", "Authorization")
+            .WithHeaders("Content-Type", "Authorization", "x-signalr-user-agent", "x-requested-with")
             .AllowCredentials();
     });
 });
@@ -81,9 +89,14 @@ app.UseRateLimiter();
 // Health
 app.MapHealthChecks("/health").AllowAnonymous().WithTags("Health");
 
+// SignalR
+app.MapHub<AccessControlHub>("/hubs/access-control");
+
 // Endpoints
 app.MapAuthEndpoints();
 app.MapDeviceEndpoints();
 app.MapCardEndpoints();
+app.MapZoneEndpoints();
+app.MapAccessLogEndpoints();
 
 app.Run();

@@ -8,6 +8,7 @@ public record DeviceDto(
     string Name,
     DeviceAdapterType AdapterType,
     DeviceFeatures Features,
+    Guid ZoneId,
     string Status,
     DateTime CreatedAt,
     DateTime UpdatedAt

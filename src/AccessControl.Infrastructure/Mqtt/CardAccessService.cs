@@ -10,6 +10,9 @@ namespace AccessControl.Infrastructure.Mqtt;
 public sealed class CardAccessService(
     IDeviceRepository deviceRepository,
     IAccessCardRepository cardRepository,
+    IAccessLogRepository accessLogRepository,
+    IAccessZoneRepository accessZoneRepository,
+    IAccessNotificationService accessNotificationService,
     IMqttService mqttService,
     ILogger<CardAccessService> logger) : ICardAccessService
 {
@@ -27,16 +30,7 @@ public sealed class CardAccessService(
         var card = await cardRepository.GetByCardUidAsync(uid, cancellationToken);
 
         var granted = card is not null && card.IsActive && card.ZoneId == device.ZoneId;
-
-        // Publish validation result to card reader
-        var resultTopic = MqttTopics.CardResult(deviceHardwareId);
-        var result = JsonSerializer.Serialize(new
-        {
-            granted,
-            uid,
-            message = granted ? "Access granted" : "Access denied"
-        });
-        await mqttService.PublishAsync(resultTopic, result, cancellationToken: cancellationToken);
+        var message = granted ? "Access granted" : "Access denied";
 
         if (granted)
         {
@@ -54,7 +48,16 @@ public sealed class CardAccessService(
         logger.LogInformation("Card {Uid} on device {DeviceName}: {Result}",
             uid, device.Name, granted ? "GRANTED" : "DENIED");
 
-        return new CardAccessResult(granted, uid, granted ? "Access granted" : "Access denied");
+        try
+        {
+            await PersistAndNotifyAsync(device, uid, card, granted, message, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to persist access log for card {Uid}", uid);
+        }
+
+        return new CardAccessResult(granted, uid, message);
     }
 
     private async Task OpenZoneLocksAsync(Device device, string uid, CancellationToken cancellationToken)
@@ -79,6 +82,31 @@ public sealed class CardAccessService(
         foreach (var lockDevice in locksToOpen)
         {
             logger.LogInformation("Lock command sent to {DeviceName} for card {Uid}", lockDevice.Name, uid);
+        }
+    }
+
+    private async Task PersistAndNotifyAsync(
+        Device device, string uid, AccessCard? card, bool granted, string message,
+        CancellationToken cancellationToken)
+    {
+        var zone = await accessZoneRepository.GetByIdAsync(device.ZoneId, cancellationToken);
+        var zoneName = zone?.Name ?? "Unknown";
+        var userName = card?.Label;
+
+        var log = AccessLog.Create(uid, device.Id, device.Name, device.ZoneId, zoneName, userName, granted, message);
+        await accessLogRepository.AddAsync(log, cancellationToken);
+        await accessLogRepository.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            var notification = new AccessLogNotification(
+                uid, device.Id, device.Name, device.ZoneId, zoneName, userName, granted, message, log.Timestamp);
+
+            await accessNotificationService.NotifyCardScannedAsync(notification, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to send access notification for card {Uid}", uid);
         }
     }
 }

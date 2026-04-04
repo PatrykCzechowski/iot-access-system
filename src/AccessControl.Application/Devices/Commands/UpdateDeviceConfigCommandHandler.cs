@@ -19,7 +19,7 @@ public sealed class UpdateDeviceConfigCommandHandler(
 
         device.UpdateConfiguration(request.Settings);
 
-        var topic = MqttTopics.ConfigUpdate(device.HardwareId);
+        var topic = MqttTopics.ConfigSet(device.HardwareId);
         var payload = JsonSerializer.Serialize(device.Configuration);
 
         await repository.SaveChangesAsync(cancellationToken);

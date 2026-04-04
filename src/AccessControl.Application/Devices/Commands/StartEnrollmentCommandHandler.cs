@@ -30,8 +30,8 @@ public sealed class StartEnrollmentCommandHandler(
         var timeout = device.Configuration.TryGetValue("enrollmentTimeoutSec", out var val)
                       && int.TryParse(val, out var seconds) && seconds > 0 ? seconds : 30;
 
-        var topic = MqttTopics.EnrollmentStart(device.HardwareId);
-        var payload = JsonSerializer.Serialize(new { timeout });
+        var topic = MqttTopics.CardEnroll(device.HardwareId);
+        var payload = JsonSerializer.Serialize(new { action = "start", timeout });
 
         await mqttService.PublishAsync(topic, payload, cancellationToken: cancellationToken);
     }

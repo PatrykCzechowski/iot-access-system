@@ -20,6 +20,7 @@ public sealed class GetDeviceByIdQueryHandler(IDeviceRepository repository)
             device.Name,
             device.AdapterType,
             device.Features,
+            device.ZoneId,
             device.Status.ToString(),
             device.CreatedAt,
             device.UpdatedAt);
