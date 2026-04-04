@@ -30,10 +30,10 @@ Api (minimal API endpoints, global exception handler)
 
 **Firmware** — ESP32-S3 (Arduino Nano ESP32) via PlatformIO:
 
-- Two device types: `card-reader` (RFID RC522) and `lock-controller` (relay)
-- Shared libraries in `firmware/shared/` — WiFi, MQTT, mDNS, device config, device ID
+- Single standalone project: `firmware/card-reader-standalone/` (NFC card reader with PN532 via I2C)
 - Communication: MQTT topics pattern `accesscontrol/{hwid}/{feature}/{action}`
 - WiFi provisioning via captive portal (WiFiManager); mDNS discovery for broker
+- Modes: normal (scan → access check) and enrollment (admin-triggered via MQTT)
 
 ## Code Style
 
@@ -48,10 +48,10 @@ Api (minimal API endpoints, global exception handler)
 
 ### C++ (Firmware)
 
-- PlatformIO build includes `../shared/*.cpp` via `build_src_filter`
+- All code in `firmware/card-reader-standalone/src/main.cpp` (self-contained)
 - Device config persisted in ESP32 NVS (Preferences API)
 - Hardware IDs: deterministic UUID v5-like from MAC address
-- Keep pin definitions in `config.h`, shared constants in `config_common.h`
+- PN532 connected via I2C (A4/A5), LEDs on D2-D4, Buzzer on D5
 
 ## Build and Test
 
@@ -64,7 +64,7 @@ dotnet run
 docker compose up --build
 
 # Firmware — build & upload (PlatformIO CLI)
-cd firmware/card-reader   # or lock-controller
+cd firmware/card-reader-standalone
 pio run                   # build
 pio run -t upload         # flash
 
@@ -99,5 +99,5 @@ No test projects exist yet — when adding tests, follow xUnit + FluentAssertion
 | MQTT message handlers | `src/AccessControl.Infrastructure/Mqtt/Handlers/` |
 | EF DbContext | `src/AccessControl.Infrastructure/Persistence/AccessControlDbContext.cs` |
 | Domain entities | `src/AccessControl.Domain/Entities/` |
-| Firmware shared libs | `firmware/shared/` |
+| Firmware (card reader) | `firmware/card-reader-standalone/src/main.cpp` |
 | Docker infrastructure | `docker-compose.yml`, `mosquitto/` |

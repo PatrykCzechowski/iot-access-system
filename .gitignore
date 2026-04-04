@@ -57,6 +57,12 @@ ScaffoldingReadMe.txt
 ## PlatformIO
 .pio/
 
+## Backup files
+*.bak
+
+## Generated CAD output
+docs/enclosure/output/
+
 ## Windows
 Thumbs.db
 ehthumbs.db
