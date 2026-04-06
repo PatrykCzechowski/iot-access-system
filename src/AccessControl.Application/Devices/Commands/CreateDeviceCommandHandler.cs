@@ -4,13 +4,16 @@ using AccessControl.Application.Devices.Abstractions;
 using AccessControl.Domain.Entities;
 using AccessControl.Domain.Exceptions;
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace AccessControl.Application.Devices.Commands;
 
 public sealed class CreateDeviceCommandHandler(
     IDeviceRepository repository,
     IDeviceDiscoveryService discoveryService,
-    IDeviceAdapterResolver adapterResolver)
+    IDeviceAdapterResolver adapterResolver,
+    IDeviceProvisioningService provisioningService,
+    ILogger<CreateDeviceCommandHandler> logger)
     : IRequestHandler<CreateDeviceCommand, Guid>
 {
     public async Task<Guid> Handle(
@@ -44,6 +47,21 @@ public sealed class CreateDeviceCommandHandler(
 
         await repository.AddAsync(device, cancellationToken);
         await repository.SaveChangesAsync(cancellationToken);
+
+        // Push MQTT config to the device — failure is non-blocking (admin can retry via /provision endpoint)
+        try
+        {
+            var result = await provisioningService.ProvisionAsync(discovered.IpAddress, cancellationToken);
+            if (!result.Success)
+            {
+                logger.LogWarning("Auto-provisioning failed for device {DeviceId}: {Error}",
+                    device.Id, result.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Auto-provisioning threw for device {DeviceId}", device.Id);
+        }
 
         return device.Id;
     }

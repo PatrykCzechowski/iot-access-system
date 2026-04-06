@@ -8,4 +8,5 @@ public interface IDeviceService
     Task AddDeviceAsync(Guid hardwareId, string name, Guid zoneId);
     Task StartEnrollmentAsync(Guid deviceId);
     Task CancelEnrollmentAsync(Guid deviceId);
+    Task<DeviceProvisionResult> ProvisionDeviceAsync(Guid deviceId);
 }

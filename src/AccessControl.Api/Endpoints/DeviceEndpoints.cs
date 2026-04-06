@@ -60,6 +60,20 @@ public static class DeviceEndpoints
             .Produces(StatusCodes.Status201Created)
             .ProducesValidationProblem();
 
+        // POST /api/devices/{id}/provision — push MQTT config to device
+        group.MapPost("/{id:guid}/provision",
+                async (Guid id, ISender sender, CancellationToken ct) =>
+                {
+                    var result = await sender.Send(new ProvisionDeviceCommand(id), ct);
+                    return result.Success
+                        ? Results.Ok(result)
+                        : Results.UnprocessableEntity(result);
+                })
+            .WithName("ProvisionDevice")
+            .Produces<DeviceProvisionResult>()
+            .Produces<DeviceProvisionResult>(StatusCodes.Status422UnprocessableEntity)
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
         // POST /api/devices/{id}/enrollment/start — start card enrollment mode
         group.MapPost("/{id:guid}/enrollment/start",
                 async (Guid id, ISender sender, CancellationToken ct) =>

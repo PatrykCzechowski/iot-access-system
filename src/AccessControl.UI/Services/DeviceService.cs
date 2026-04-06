@@ -17,4 +17,9 @@ public sealed class DeviceService(IFlurlClient flurlClient) : IDeviceService
 
     public Task CancelEnrollmentAsync(Guid deviceId)
         => flurlClient.Request("api/devices", deviceId, "enrollment", "cancel").PostAsync();
+
+    public Task<DeviceProvisionResult> ProvisionDeviceAsync(Guid deviceId)
+        => flurlClient.Request("api/devices", deviceId, "provision")
+            .PostAsync()
+            .ReceiveJson<DeviceProvisionResult>();
 }

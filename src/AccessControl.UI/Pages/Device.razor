@@ -2,6 +2,7 @@
 @using Flurl.Http
 @attribute [Authorize]
 @inject IFlurlClient Http
+@inject IDeviceService DeviceService
 @inject ISnackbar Snackbar
 
 <PageTitle>@(_device?.Name ?? "Device")</PageTitle>
@@ -56,6 +57,17 @@ else
                         <MudText Typo="Typo.body2">@_device.UpdatedAt.ToLocalTime().ToString("g")</MudText>
                     </MudStack>
                 </MudStack>
+                <MudDivider Class="my-3" />
+                <MudButton Variant="Variant.Outlined" Color="Color.Warning"
+                           StartIcon="@Icons.Material.Filled.SettingsInputAntenna"
+                           OnClick="ProvisionDevice" Disabled="_provisioning"
+                           FullWidth="true">
+                    @if (_provisioning)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    }
+                    Push MQTT Config
+                </MudButton>
             </MudPaper>
         </MudItem>
 
@@ -87,6 +99,7 @@ else
 
     private DeviceItem? _device;
     private bool _loading = true;
+    private bool _provisioning;
 
     protected override async Task OnInitializedAsync()
     {
@@ -111,6 +124,35 @@ else
         finally
         {
             _loading = false;
+        }
+    }
+
+    private async Task ProvisionDevice()
+    {
+        _provisioning = true;
+        try
+        {
+            var result = await DeviceService.ProvisionDeviceAsync(Id);
+            if (result.Success)
+            {
+                Snackbar.Add("MQTT config pushed to device.", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add($"Provisioning failed: {result.Error}", Severity.Warning);
+            }
+        }
+        catch (FlurlHttpException ex) when (ex.StatusCode == 404)
+        {
+            Snackbar.Add("Device not visible on network. Run a scan first.", Severity.Error);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Provisioning request failed.", Severity.Error);
+        }
+        finally
+        {
+            _provisioning = false;
         }
     }
 }

@@ -21,6 +21,8 @@ public sealed record DiscoveredDeviceItem(
     DateTime DiscoveredAt,
     bool AlreadyRegistered);
 
+public sealed record DeviceProvisionResult(bool Success, string? Error = null);
+
 public static class DeviceHelpers
 {
     private const int CardReaderFeature = 1;

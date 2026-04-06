@@ -76,6 +76,10 @@ public static class DependencyInjection
         services.AddSingleton<IMqttService>(sp => sp.GetRequiredService<MqttClientService>());
         services.AddHostedService(sp => sp.GetRequiredService<MqttClientService>());
         services.AddHostedService<MqttBrokerMdnsAdvertiser>();
+        services.AddHttpClient<IDeviceProvisioningService, DeviceProvisioningService>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(10);
+        });
         services.AddScoped<ICardAccessService, CardAccessService>();
         services.AddScoped<ICardEnrollmentService, CardEnrollmentService>();
 
