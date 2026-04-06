@@ -55,6 +55,12 @@ public sealed class DeviceRepository(AccessControlDbContext dbContext) : IDevice
         await dbContext.Devices.AddAsync(device, cancellationToken);
     }
 
+    public Task DeleteAsync(Device device, CancellationToken cancellationToken)
+    {
+        dbContext.Devices.Remove(device);
+        return Task.CompletedTask;
+    }
+
     public async Task<bool> ExistsByHardwareIdAsync(Guid hardwareId, CancellationToken cancellationToken)
     {
         return await dbContext.Devices

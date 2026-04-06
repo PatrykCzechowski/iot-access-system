@@ -14,5 +14,6 @@ public interface IDeviceRepository
     Task<bool> ExistsByHardwareIdAsync(Guid hardwareId, CancellationToken cancellationToken);
     Task<IReadOnlySet<Guid>> GetExistingHardwareIdsAsync(IEnumerable<Guid> hardwareIds, CancellationToken cancellationToken);
     Task AddAsync(Device device, CancellationToken cancellationToken);
+    Task DeleteAsync(Device device, CancellationToken cancellationToken);
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

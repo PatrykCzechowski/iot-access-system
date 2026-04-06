@@ -8,7 +8,7 @@ public class Device
 {
     public Guid Id { get; init; }
     public Guid HardwareId { get; init; }
-    public required string Name { get; init; }
+    public string Name { get; private set; } = null!;
     public DeviceAdapterType AdapterType { get; init; }
     public DeviceFeatures Features { get; init; }
     public Guid ZoneId { get; private set; }
@@ -58,6 +58,19 @@ public class Device
         Status = DeviceStatus.Online;
         LastHeartbeat = now;
         UpdatedAt = now;
+    }
+
+    public void Update(string name, Guid zoneId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        if (zoneId == Guid.Empty)
+        {
+            throw new DomainValidationException("ZoneId cannot be empty.");
+        }
+
+        Name = name.Trim();
+        ZoneId = zoneId;
+        UpdatedAt = DateTime.UtcNow;
     }
 
     private static readonly FrozenDictionary<string, Func<string, bool>> ConfigValidators =
