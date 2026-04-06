@@ -13,7 +13,17 @@ public static class DeviceEndpoints
             .RequireAuthorization(policy => policy.RequireRole("Admin"))
             .WithTags("Devices");
 
-        // POST /api/devices/scan — trigger mDNS scan, return discovered devices
+        // Standard CRUD
+        group
+            .WithGetAll<GetDevicesQuery, DeviceDto>("GetDevices")
+            .WithGetById<DeviceDto>("GetDeviceById", id => new GetDeviceByIdQuery(id))
+            .WithCreate<CreateDeviceCommand>("CreateDevice", "GetDeviceById")
+            .WithUpdate("UpdateDevice", (Guid id, UpdateDeviceRequest body) =>
+                new UpdateDeviceCommand(id, body.Name, body.ZoneId))
+            .WithDelete("DeleteDevice", id => new DeleteDeviceCommand(id));
+
+        // Device-specific actions
+
         group.MapPost("/scan", async (ISender sender, CancellationToken ct) =>
             {
                 var result = await sender.Send(new ScanForDevicesCommand(), ct);
@@ -22,7 +32,6 @@ public static class DeviceEndpoints
             .WithName("ScanForDevices")
             .Produces<IReadOnlyCollection<DiscoveredDeviceDto>>();
 
-        // GET /api/devices/discovered — return cached discovered devices (no scan)
         group.MapGet("/discovered", async (ISender sender, CancellationToken ct) =>
             {
                 var result = await sender.Send(new GetDiscoveredDevicesQuery(), ct);
@@ -31,36 +40,6 @@ public static class DeviceEndpoints
             .WithName("GetDiscoveredDevices")
             .Produces<IReadOnlyCollection<DiscoveredDeviceDto>>();
 
-        // GET /api/devices — registered devices
-        group.MapGet("/", async (ISender sender, CancellationToken ct) =>
-            {
-                var result = await sender.Send(new GetDevicesQuery(), ct);
-                return Results.Ok(result);
-            })
-            .WithName("GetDevices")
-            .Produces<IReadOnlyCollection<DeviceDto>>();
-
-        // GET /api/devices/{id}
-        group.MapGet("/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>
-            {
-                var result = await sender.Send(new GetDeviceByIdQuery(id), ct);
-                return Results.Ok(result);
-            })
-            .WithName("GetDeviceById")
-            .Produces<DeviceDto>()
-            .ProducesProblem(StatusCodes.Status404NotFound);
-
-        // POST /api/devices — register a discovered device by HardwareId
-        group.MapPost("/", async (CreateDeviceCommand command, ISender sender, CancellationToken ct) =>
-            {
-                var id = await sender.Send(command, ct);
-                return Results.Created($"/api/devices/{id}", new { id });
-            })
-            .WithName("CreateDevice")
-            .Produces(StatusCodes.Status201Created)
-            .ProducesValidationProblem();
-
-        // POST /api/devices/{id}/provision — push MQTT config to device
         group.MapPost("/{id:guid}/provision",
                 async (Guid id, ISender sender, CancellationToken ct) =>
                 {
@@ -74,7 +53,6 @@ public static class DeviceEndpoints
             .Produces<DeviceProvisionResult>(StatusCodes.Status422UnprocessableEntity)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
-        // POST /api/devices/{id}/enrollment/start — start card enrollment mode
         group.MapPost("/{id:guid}/enrollment/start",
                 async (Guid id, ISender sender, CancellationToken ct) =>
                 {
@@ -86,7 +64,6 @@ public static class DeviceEndpoints
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict);
 
-        // POST /api/devices/{id}/enrollment/cancel — cancel card enrollment mode
         group.MapPost("/{id:guid}/enrollment/cancel",
                 async (Guid id, ISender sender, CancellationToken ct) =>
                 {
@@ -98,7 +75,6 @@ public static class DeviceEndpoints
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict);
 
-        // PUT /api/devices/{id}/config — update device dynamic configuration
         group.MapPut("/{id:guid}/config",
                 async (Guid id, UpdateDeviceConfigRequest body, ISender sender, CancellationToken ct) =>
                 {
@@ -113,5 +89,6 @@ public static class DeviceEndpoints
         return app;
     }
 
+    private record UpdateDeviceRequest(string Name, Guid ZoneId);
     private record UpdateDeviceConfigRequest(Dictionary<string, string> Settings);
 }
