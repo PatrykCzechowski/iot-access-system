@@ -60,6 +60,7 @@ public static class DependencyInjection
         services.AddSingleton<IDeviceAdapter, CardAndKeypadReaderDeviceAdapter>();
         services.AddSingleton<IDeviceAdapter, DisplayExecutorDeviceAdapter>();
         services.AddSingleton<IDeviceAdapter, LockPinExecutorDeviceAdapter>();
+        services.AddSingleton<IDeviceAdapter, CardReaderWithLockDeviceAdapter>();
         services.AddSingleton<IDeviceAdapterResolver, DeviceAdapterResolver>();
         services.AddScoped<IDeviceRepository, DeviceRepository>();
         services.AddScoped<IAccessCardRepository, AccessCardRepository>();

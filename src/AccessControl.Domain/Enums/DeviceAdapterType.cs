@@ -7,4 +7,5 @@ public enum DeviceAdapterType
     CardAndKeypadReader = 3,
     DisplayExecutor = 4,
     LockPinExecutor = 5,
+    CardReaderWithLock = 6,
 }
