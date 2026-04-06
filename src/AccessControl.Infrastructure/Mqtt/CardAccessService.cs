@@ -32,6 +32,33 @@ public sealed class CardAccessService(
         var granted = card is not null && card.IsActive && card.ZoneId == device.ZoneId;
         var message = granted ? "Access granted" : "Access denied";
 
+        logger.LogInformation("Card {Uid} on device {DeviceName}: {Result}",
+            uid, device.Name, granted ? "GRANTED" : "DENIED");
+
+        // Persist audit log first — ensures we have a record even if MQTT publish fails
+        try
+        {
+            await PersistAndNotifyAsync(device, uid, card, granted, message, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to persist access log for card {Uid}", uid);
+        }
+
+        // Send result to the scanning device
+        try
+        {
+            var resultTopic = MqttTopics.CardResult(deviceHardwareId);
+            var resultPayload = JsonSerializer.Serialize(new { granted, uid, message });
+            await mqttService.PublishAsync(resultTopic, resultPayload, cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to send card result to device {HardwareId} for card {Uid}",
+                deviceHardwareId, uid);
+        }
+
+        // Open locks in the zone if access was granted
         if (granted)
         {
             try
@@ -45,41 +72,30 @@ public sealed class CardAccessService(
             }
         }
 
-        logger.LogInformation("Card {Uid} on device {DeviceName}: {Result}",
-            uid, device.Name, granted ? "GRANTED" : "DENIED");
-
-        try
-        {
-            await PersistAndNotifyAsync(device, uid, card, granted, message, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to persist access log for card {Uid}", uid);
-        }
-
         return new CardAccessResult(granted, uid, message);
     }
 
     private async Task OpenZoneLocksAsync(Device device, string uid, CancellationToken cancellationToken)
     {
+        // Includes the scanning device itself — combo devices (CardReaderWithLock)
+        // need to receive the lock command to open their own relay.
         var lockDevices = await deviceRepository.GetOnlineByZoneAndFeatureAsync(
             device.ZoneId, DeviceFeatures.LockControl, cancellationToken);
 
-        var locksToOpen = lockDevices
-            .Where(d => d.Id != device.Id)
-            .ToList();
-
-        var lockTasks = locksToOpen
+        var lockTasks = lockDevices
             .Select(lockDevice =>
             {
+                var durationSec = lockDevice.Configuration.TryGetValue("lockOpenDurationSec", out var val)
+                    && int.TryParse(val, out var d) ? d : 5;
                 var lockTopic = MqttTopics.LockCommand(lockDevice.HardwareId);
-                var lockPayload = JsonSerializer.Serialize(new { action = "open" });
+                var lockPayload = JsonSerializer.Serialize(new { action = "open", durationSec });
                 return mqttService.PublishAsync(lockTopic, lockPayload, cancellationToken: cancellationToken);
-            });
+            })
+            .ToList();
 
         await Task.WhenAll(lockTasks);
 
-        foreach (var lockDevice in locksToOpen)
+        foreach (var lockDevice in lockDevices)
         {
             logger.LogInformation("Lock command sent to {DeviceName} for card {Uid}", lockDevice.Name, uid);
         }

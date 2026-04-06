@@ -24,6 +24,7 @@ public static partial class MqttTopics
     // Publish topics (server → device)
     public static string LockCommand(Guid hardwareId) => $"{Prefix}/{hardwareId}/lock/command";
     public static string CardEnroll(Guid hardwareId) => $"{Prefix}/{hardwareId}/card/enroll";
+    public static string CardResult(Guid hardwareId) => $"{Prefix}/{hardwareId}/card/result";
     public static string ConfigSet(Guid hardwareId) => $"{Prefix}/{hardwareId}/config/set";
 
     // Subscribe patterns (device → server, MQTT wildcards)
