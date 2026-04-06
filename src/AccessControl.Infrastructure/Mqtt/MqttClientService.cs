@@ -76,6 +76,11 @@ public sealed class MqttClientService : BackgroundService, IMqttService
     {
         stoppingToken.Register(() => _cts.Cancel());
         await ConnectWithRetryAsync(_cts.Token);
+
+        // Keep the BackgroundService alive so MQTTnet's internal keep-alive
+        // pump and message dispatch continue running until shutdown.
+        await Task.Delay(Timeout.Infinite, stoppingToken)
+            .ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
     }
 
     public async Task PublishAsync(string topic, string payload, bool retain = false, CancellationToken cancellationToken = default)
@@ -180,9 +185,16 @@ public sealed class MqttClientService : BackgroundService, IMqttService
 
     private async Task OnDisconnectedAsync(MqttClientDisconnectedEventArgs e)
     {
-        if (e.ClientWasConnected && !_cts.IsCancellationRequested)
+        if (_cts.IsCancellationRequested)
         {
-            _logger.LogWarning("MQTT disconnected. Reconnecting...");
+            _logger.LogInformation("MQTT disconnected during shutdown");
+            return;
+        }
+
+        if (e.ClientWasConnected)
+        {
+            _logger.LogWarning("MQTT disconnected unexpectedly. Reason={Reason}, Exception={Exception}",
+                e.Reason, e.Exception?.Message);
             await ConnectWithRetryAsync(_cts.Token);
         }
     }
