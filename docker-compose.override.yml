@@ -1,0 +1,14 @@
+# Local development overrides — loaded automatically by `docker compose up`
+# Uses anonymous MQTT (no credentials needed for local dev)
+services:
+  mosquitto:
+    volumes:
+      - ./mosquitto/mosquitto-dev.conf:/mosquitto/config/mosquitto.conf
+    entrypoint: ["mosquitto", "-c", "/mosquitto/config/mosquitto.conf"]
+    command: []
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -t '$$SYS/#' -C 1 -i healthcheck -W 3"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s

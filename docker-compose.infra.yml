@@ -1,0 +1,45 @@
+# Infrastructure-only compose for local development.
+# Starts Mosquitto (anonymous MQTT) + PostgreSQL.
+# Run the API and UI on the host so mDNS reaches your LAN (ESP32 devices).
+#
+# Usage:
+#   cp .env.example .env        # first time only
+#   docker compose -f docker-compose.infra.yml up -d
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: access_control_mqtt
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/mosquitto-dev.conf:/mosquitto/config/mosquitto.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -t '$$SYS/#' -C 1 -i healthcheck -W 3"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  database:
+    image: postgres:18-alpine
+    container_name: access_control_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-access_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-access_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-access_db}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-access_user} -d ${POSTGRES_DB:-access_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  postgres_data:
