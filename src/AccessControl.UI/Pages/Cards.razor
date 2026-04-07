@@ -3,7 +3,7 @@
 @using AccessControl.UI.Services
 @attribute [Authorize]
 @inject ICardService CardService
-@inject IZoneService ZoneService
+@inject ICardholderService CardholderService
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 @inject NavigationManager Nav
@@ -20,18 +20,10 @@
 
 <MudStack Row="true" Spacing="3" Class="mb-4">
     <MudTextField @bind-Value="_searchText" @bind-Value:after="UpdateFilteredCards"
-                  Label="Search" Placeholder="UID or label..."
+                  Label="Search" Placeholder="UID, label or cardholder..."
                   Variant="Variant.Outlined" Adornment="Adornment.Start"
                   AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true"
                   DebounceInterval="300" Style="max-width: 300px;" />
-    <MudSelect T="Guid?" @bind-Value="_filterZoneId" @bind-Value:after="UpdateFilteredCards"
-               Label="Zone" Variant="Variant.Outlined"
-               Clearable="true" Style="max-width: 250px;" AnchorOrigin="Origin.BottomCenter">
-        @foreach (var zone in _zones)
-        {
-            <MudSelectItem T="Guid?" Value="@((Guid?)zone.Id)">@zone.Name</MudSelectItem>
-        }
-    </MudSelect>
 </MudStack>
 
 @if (_loading)
@@ -50,7 +42,7 @@ else
         <HeaderContent>
             <MudTh>UID</MudTh>
             <MudTh>Label</MudTh>
-            <MudTh>Zone</MudTh>
+            <MudTh>Cardholder</MudTh>
             <MudTh>Status</MudTh>
             <MudTh>Created</MudTh>
             <MudTh Style="width: 120px;">Actions</MudTh>
@@ -62,8 +54,8 @@ else
             <MudTd DataLabel="Label">
                 @(context.Label ?? "—")
             </MudTd>
-            <MudTd DataLabel="Zone">
-                @GetZoneName(context.ZoneId)
+            <MudTd DataLabel="Cardholder">
+                @(context.CardholderName ?? "—")
             </MudTd>
             <MudTd DataLabel="Status">
                 @if (context.IsActive)
@@ -91,18 +83,17 @@ else
 @code {
     private List<CardItem> _cards = [];
     private List<CardItem> _filteredCards = [];
-    private List<ZoneItem> _zones = [];
+    private List<CardholderItem> _cardholders = [];
     private bool _loading = true;
     private string? _searchText;
-    private Guid? _filterZoneId;
 
     private void UpdateFilteredCards()
     {
         _filteredCards = _cards
-            .Where(c => _filterZoneId is null || c.ZoneId == _filterZoneId)
             .Where(c => string.IsNullOrEmpty(_searchText)
                 || c.CardUid.Contains(_searchText, StringComparison.OrdinalIgnoreCase)
-                || (c.Label?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false))
+                || (c.Label?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false)
+                || (c.CardholderName?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false))
             .ToList();
     }
 
@@ -117,9 +108,9 @@ else
         try
         {
             var cardsTask = CardService.GetCardsAsync();
-            var zonesTask = ZoneService.GetZonesAsync();
+            var cardholdersTask = CardholderService.GetCardholdersAsync();
             _cards = await cardsTask;
-            _zones = await zonesTask;
+            _cardholders = await cardholdersTask;
             UpdateFilteredCards();
         }
         catch (FlurlHttpException ex) when (ex.StatusCode == 401)
@@ -135,9 +126,6 @@ else
             _loading = false;
         }
     }
-
-    private string GetZoneName(Guid zoneId) =>
-        _zones.FirstOrDefault(z => z.Id == zoneId)?.Name ?? "Unknown";
 
     private async Task OpenEnrollDialog()
     {
@@ -156,7 +144,7 @@ else
         var parameters = new DialogParameters<EditCardDialog>
         {
             { x => x.Card, card },
-            { x => x.Zones, _zones }
+            { x => x.Cardholders, _cardholders }
         };
 
         var dialog = await DialogService.ShowAsync<EditCardDialog>("Edit Card", parameters,

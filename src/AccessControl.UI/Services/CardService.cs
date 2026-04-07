@@ -8,13 +8,13 @@ public sealed class CardService(IFlurlClient flurlClient) : ICardService
     public Task<List<CardItem>> GetCardsAsync()
         => flurlClient.Request("api/cards").GetJsonAsync<List<CardItem>>();
 
-    public Task CreateCardAsync(string cardUid, Guid zoneId, string? label)
+    public Task CreateCardAsync(string cardUid, Guid? cardholderId, string? label)
         => flurlClient.Request("api/cards")
-            .PostJsonAsync(new { CardUid = cardUid, ZoneId = zoneId, Label = label });
+            .PostJsonAsync(new { CardUid = cardUid, CardholderId = cardholderId, Label = label });
 
-    public Task UpdateCardAsync(Guid id, Guid zoneId, string? userId, string? label, bool isActive)
+    public Task UpdateCardAsync(Guid id, Guid? cardholderId, string? label, bool isActive)
         => flurlClient.Request("api/cards", id)
-            .PutJsonAsync(new { ZoneId = zoneId, UserId = userId, Label = label, IsActive = isActive });
+            .PutJsonAsync(new { CardholderId = cardholderId, Label = label, IsActive = isActive });
 
     public Task DeleteCardAsync(Guid id)
         => flurlClient.Request("api/cards", id).DeleteAsync();

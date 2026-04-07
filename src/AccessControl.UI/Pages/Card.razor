@@ -37,13 +37,8 @@ else
                     </MudStack>
                     <MudDivider/>
                     <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-                        <MudText Typo="Typo.body2" Color="Color.Secondary">User</MudText>
-                        <MudText Typo="Typo.caption" Style="font-family: monospace;">@_card.UserId</MudText>
-                    </MudStack>
-                    <MudDivider/>
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-                        <MudText Typo="Typo.body2" Color="Color.Secondary">Zone</MudText>
-                        <MudText Typo="Typo.caption" Style="font-family: monospace;">@_card.ZoneId</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Cardholder</MudText>
+                        <MudText Typo="Typo.body2">@(_card.CardholderName ?? "—")</MudText>
                     </MudStack>
                     <MudDivider/>
                     <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">

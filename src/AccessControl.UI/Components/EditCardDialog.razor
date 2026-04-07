@@ -12,11 +12,11 @@
             <MudTextField @bind-Value="_label" Label="Label" MaxLength="100"
                           Variant="Variant.Outlined" />
 
-            <MudSelect T="Guid" @bind-Value="_selectedZoneId" Label="Zone" Required="true"
-                       Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter">
-                @foreach (var zone in Zones)
+            <MudSelect T="Guid?" @bind-Value="_selectedCardholderId" Label="Cardholder"
+                       Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" Clearable="true">
+                @foreach (var ch in Cardholders)
                 {
-                    <MudSelectItem T="Guid" Value="zone.Id">@zone.Name</MudSelectItem>
+                    <MudSelectItem T="Guid?" Value="@((Guid?)ch.Id)">@ch.FullName</MudSelectItem>
                 }
             </MudSelect>
 
@@ -40,17 +40,17 @@
     private IMudDialogInstance MudDialog { get; set; } = default!;
 
     [Parameter] public CardItem Card { get; set; } = default!;
-    [Parameter] public List<ZoneItem> Zones { get; set; } = [];
+    [Parameter] public List<CardholderItem> Cardholders { get; set; } = [];
 
     private string? _label;
-    private Guid _selectedZoneId;
+    private Guid? _selectedCardholderId;
     private bool _isActive;
     private bool _submitting;
 
     protected override void OnInitialized()
     {
         _label = Card.Label;
-        _selectedZoneId = Card.ZoneId;
+        _selectedCardholderId = Card.CardholderId;
         _isActive = Card.IsActive;
     }
 
@@ -58,16 +58,10 @@
 
     private async Task Submit()
     {
-        if (_selectedZoneId == Guid.Empty)
-        {
-            Snackbar.Add("Please select a zone.", Severity.Warning);
-            return;
-        }
-
         _submitting = true;
         try
         {
-            await CardService.UpdateCardAsync(Card.Id, _selectedZoneId, Card.UserId, _label, _isActive);
+            await CardService.UpdateCardAsync(Card.Id, _selectedCardholderId, _label, _isActive);
             Snackbar.Add("Card updated.", Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));
         }

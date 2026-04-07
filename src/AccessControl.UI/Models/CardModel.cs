@@ -3,8 +3,8 @@ namespace AccessControl.UI.Models;
 public sealed record CardItem(
     Guid Id,
     string CardUid,
-    string? UserId,
-    Guid ZoneId,
+    Guid? CardholderId,
+    string? CardholderName,
     bool IsActive,
     string? Label,
     DateTime CreatedAt,

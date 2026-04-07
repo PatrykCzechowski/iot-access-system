@@ -31,7 +31,7 @@ else
             <MudTh>Name</MudTh>
             <MudTh>Description</MudTh>
             <MudTh>Devices</MudTh>
-            <MudTh>Cards</MudTh>
+            <MudTh>Profiles</MudTh>
             <MudTh>Created</MudTh>
             <MudTh Style="width: 120px;">Actions</MudTh>
         </HeaderContent>
@@ -43,7 +43,7 @@ else
                 <MudText Typo="Typo.body2" Color="Color.Secondary">@(context.Description ?? "—")</MudText>
             </MudTd>
             <MudTd DataLabel="Devices">@context.DeviceCount</MudTd>
-            <MudTd DataLabel="Cards">@context.CardCount</MudTd>
+            <MudTd DataLabel="Profiles">@context.ProfileCount</MudTd>
             <MudTd DataLabel="Created">@context.CreatedAt.ToString("yyyy-MM-dd")</MudTd>
             <MudTd>
                 <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"

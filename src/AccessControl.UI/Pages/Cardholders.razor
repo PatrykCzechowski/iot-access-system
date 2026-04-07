@@ -1,0 +1,164 @@
+@page "/cardholders"
+@using Flurl.Http
+@using AccessControl.UI.Services
+@attribute [Authorize]
+@inject ICardholderService CardholderService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Cardholders</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+    <MudText Typo="Typo.h5">Cardholders</MudText>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd"
+               OnClick="OpenCreateDialog">
+        New Cardholder
+    </MudButton>
+</MudStack>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+}
+else if (_cardholders.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">No cardholders found.</MudAlert>
+}
+else
+{
+    <MudTable Items="_cardholders" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" Striped="true">
+        <HeaderContent>
+            <MudTh>First Name</MudTh>
+            <MudTh>Last Name</MudTh>
+            <MudTh>Email</MudTh>
+            <MudTh>Phone</MudTh>
+            <MudTh>Cards</MudTh>
+            <MudTh Style="width: 120px;">Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="First Name">
+                <MudText Typo="Typo.body1"><strong>@context.FirstName</strong></MudText>
+            </MudTd>
+            <MudTd DataLabel="Last Name">@context.LastName</MudTd>
+            <MudTd DataLabel="Email">@(context.Email ?? "—")</MudTd>
+            <MudTd DataLabel="Phone">@(context.PhoneNumber ?? "—")</MudTd>
+            <MudTd DataLabel="Cards">@context.CardCount</MudTd>
+            <MudTd>
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                               OnClick="@(() => OpenEditDialog(context))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                               OnClick="@(() => DeleteCardholderAsync(context))" />
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+
+@code {
+    private List<CardholderItem> _cardholders = [];
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _loading = true;
+        try
+        {
+            _cardholders = await CardholderService.GetCardholdersAsync();
+        }
+        catch (FlurlHttpException ex) when (ex.StatusCode == 401)
+        {
+            Snackbar.Add("Unauthorized.", Severity.Error);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Failed to load cardholders.", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var parameters = new DialogParameters<CardholderDialog>
+        {
+            { x => x.FirstName, string.Empty },
+            { x => x.LastName, string.Empty },
+            { x => x.Email, null },
+            { x => x.PhoneNumber, null }
+        };
+
+        var dialog = await DialogService.ShowAsync<CardholderDialog>("New Cardholder", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: CardholderDialogResult data })
+        {
+            try
+            {
+                await CardholderService.CreateCardholderAsync(data.FirstName, data.LastName, data.Email, data.PhoneNumber);
+                Snackbar.Add("Cardholder created.", Severity.Success);
+                await LoadDataAsync();
+            }
+            catch (FlurlHttpException)
+            {
+                Snackbar.Add("Failed to create cardholder.", Severity.Error);
+            }
+        }
+    }
+
+    private async Task OpenEditDialog(CardholderItem cardholder)
+    {
+        var parameters = new DialogParameters<CardholderDialog>
+        {
+            { x => x.FirstName, cardholder.FirstName },
+            { x => x.LastName, cardholder.LastName },
+            { x => x.Email, cardholder.Email },
+            { x => x.PhoneNumber, cardholder.PhoneNumber }
+        };
+
+        var dialog = await DialogService.ShowAsync<CardholderDialog>("Edit Cardholder", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: CardholderDialogResult data })
+        {
+            try
+            {
+                await CardholderService.UpdateCardholderAsync(cardholder.Id, data.FirstName, data.LastName, data.Email, data.PhoneNumber);
+                Snackbar.Add("Cardholder updated.", Severity.Success);
+                await LoadDataAsync();
+            }
+            catch (FlurlHttpException)
+            {
+                Snackbar.Add("Failed to update cardholder.", Severity.Error);
+            }
+        }
+    }
+
+    private async Task DeleteCardholderAsync(CardholderItem cardholder)
+    {
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Delete Cardholder",
+            $"Are you sure you want to delete \"{cardholder.FullName}\"?",
+            yesText: "Delete", cancelText: "Cancel");
+
+        if (confirmed != true) return;
+
+        try
+        {
+            await CardholderService.DeleteCardholderAsync(cardholder.Id);
+            Snackbar.Add("Cardholder deleted.", Severity.Success);
+            await LoadDataAsync();
+        }
+        catch (FlurlHttpException)
+        {
+            Snackbar.Add("Failed to delete cardholder.", Severity.Error);
+        }
+    }
+}

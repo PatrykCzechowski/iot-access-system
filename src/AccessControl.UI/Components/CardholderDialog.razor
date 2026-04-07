@@ -1,0 +1,50 @@
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="FirstName" Label="First Name" Required="true" MaxLength="100"
+                          Variant="Variant.Outlined" />
+            <MudTextField @bind-Value="LastName" Label="Last Name" Required="true" MaxLength="100"
+                          Variant="Variant.Outlined" />
+            <MudTextField @bind-Value="Email" Label="Email" MaxLength="100"
+                          Variant="Variant.Outlined" InputType="InputType.Email" />
+            <MudTextField @bind-Value="PhoneNumber" Label="Phone Number" MaxLength="30"
+                          Variant="Variant.Outlined" InputType="InputType.Telephone" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public string FirstName { get; set; } = string.Empty;
+    [Parameter] public string LastName { get; set; } = string.Empty;
+    [Parameter] public string? Email { get; set; }
+    [Parameter] public string? PhoneNumber { get; set; }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit()
+    {
+        if (string.IsNullOrWhiteSpace(FirstName))
+        {
+            Snackbar.Add("First name is required.", Severity.Warning);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(LastName))
+        {
+            Snackbar.Add("Last name is required.", Severity.Warning);
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok(new CardholderDialogResult(
+            FirstName.Trim(), LastName.Trim(), Email?.Trim(), PhoneNumber?.Trim())));
+    }
+}

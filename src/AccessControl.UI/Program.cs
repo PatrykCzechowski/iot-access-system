@@ -32,6 +32,8 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IZoneService, ZoneService>();
 builder.Services.AddScoped<ICardService, CardService>();
 builder.Services.AddScoped<IDeviceService, DeviceService>();
+builder.Services.AddScoped<ICardholderService, CardholderService>();
+builder.Services.AddScoped<IAccessProfileService, AccessProfileService>();
 builder.Services.AddScoped<IAccessHubService, AccessHubService>();
 
 builder.Services.AddMudServices();
