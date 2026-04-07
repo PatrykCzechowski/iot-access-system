@@ -6,6 +6,7 @@
 @inject IZoneService ZoneService
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject NavigationManager Nav
 
 <PageTitle>Cards</PageTitle>
 
@@ -43,7 +44,9 @@ else if (_filteredCards.Count == 0)
 }
 else
 {
-    <MudTable Items="_filteredCards" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" Striped="true">
+    <MudTable T="CardItem" Items="_filteredCards" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" Striped="true"
+              OnRowClick="@(args => { if (args.Item is not null) Nav.NavigateTo($"/cards/{args.Item.Id}"); })"
+              RowClass="cursor-pointer">
         <HeaderContent>
             <MudTh>UID</MudTh>
             <MudTh>Label</MudTh>
@@ -74,10 +77,12 @@ else
             </MudTd>
             <MudTd DataLabel="Created">@context.CreatedAt.ToString("yyyy-MM-dd HH:mm")</MudTd>
             <MudTd>
-                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
-                               OnClick="@(() => OpenEditDialog(context))" />
-                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
-                               OnClick="@(() => DeleteCardAsync(context))" />
+                <span @onclick:stopPropagation="true">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                   OnClick="@(() => OpenEditDialog(context))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                   OnClick="@(() => DeleteCardAsync(context))" />
+                </span>
             </MudTd>
         </RowTemplate>
     </MudTable>

@@ -18,4 +18,8 @@ public sealed class CardService(IFlurlClient flurlClient) : ICardService
 
     public Task DeleteCardAsync(Guid id)
         => flurlClient.Request("api/cards", id).DeleteAsync();
+
+    public Task<CardItem> GetCardAsync(Guid id)
+        => flurlClient.Request("api/cards", id)
+            .GetJsonAsync<CardItem>();
 }

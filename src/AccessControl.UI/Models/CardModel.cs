@@ -9,3 +9,11 @@ public sealed record CardItem(
     string? Label,
     DateTime CreatedAt,
     DateTime UpdatedAt);
+
+public static class CardHelpers
+{
+    public static string FormatIsActive(bool isActive)
+    {
+        return isActive ? "Active" : "Inactive";
+    }
+}

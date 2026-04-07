@@ -8,4 +8,5 @@ public interface ICardService
     Task CreateCardAsync(string cardUid, Guid zoneId, string? label);
     Task UpdateCardAsync(Guid id, Guid zoneId, string? userId, string? label, bool isActive);
     Task DeleteCardAsync(Guid id);
+    Task<CardItem> GetCardAsync(Guid id);
 }
