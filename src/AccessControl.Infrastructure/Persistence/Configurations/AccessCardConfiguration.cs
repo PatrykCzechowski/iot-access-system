@@ -17,18 +17,6 @@ public sealed class AccessCardConfiguration : IEntityTypeConfiguration<AccessCar
         builder.HasIndex(c => c.CardUid)
             .IsUnique();
 
-        builder.Property(c => c.UserId)
-            .HasMaxLength(450);
-
-        builder.HasIndex(c => c.UserId);
-
-        builder.HasIndex(c => c.ZoneId);
-
-        builder.HasOne<AccessZone>()
-            .WithMany()
-            .HasForeignKey(c => c.ZoneId)
-            .OnDelete(DeleteBehavior.Restrict);
-
         builder.Property(c => c.Label)
             .HasMaxLength(200);
 

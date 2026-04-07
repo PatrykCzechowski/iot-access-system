@@ -27,9 +27,8 @@ public sealed class CardAccessService(
         }
 
         var uid = AccessCard.NormalizeUid(cardUid);
+        var granted = await cardRepository.HasAccessToZoneAsync(uid, device.ZoneId, cancellationToken);
         var card = await cardRepository.GetByCardUidAsync(uid, cancellationToken);
-
-        var granted = card is not null && card.IsActive && card.ZoneId == device.ZoneId;
         var message = granted ? "Access granted" : "Access denied";
 
         logger.LogInformation("Card {Uid} on device {DeviceName}: {Result}",
@@ -107,7 +106,7 @@ public sealed class CardAccessService(
     {
         var zone = await accessZoneRepository.GetByIdAsync(device.ZoneId, cancellationToken);
         var zoneName = zone?.Name ?? "Unknown";
-        var userName = card?.Label;
+        var userName = card?.Cardholder?.FullName ?? card?.Label;
 
         var log = AccessLog.Create(uid, device.Id, device.Name, device.ZoneId, zoneName, userName, granted, message);
         await accessLogRepository.AddAsync(log, cancellationToken);

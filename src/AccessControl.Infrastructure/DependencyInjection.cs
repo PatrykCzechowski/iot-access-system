@@ -53,7 +53,6 @@ public static class DependencyInjection
 
         services.AddScoped<IAuthService, AuthService>();
         services.AddTransient<AdminSeeder>();
-        services.AddScoped<DevDataSeeder>();
 
         services.AddSingleton<IDeviceAdapter, CardReaderDeviceAdapter>();
         services.AddSingleton<IDeviceAdapter, KeypadReaderDeviceAdapter>();
@@ -66,6 +65,8 @@ public static class DependencyInjection
         services.AddScoped<IAccessCardRepository, AccessCardRepository>();
         services.AddScoped<IAccessZoneRepository, AccessZoneRepository>();
         services.AddScoped<IAccessLogRepository, AccessLogRepository>();
+        services.AddScoped<ICardholderRepository, CardholderRepository>();
+        services.AddScoped<IAccessProfileRepository, AccessProfileRepository>();
         services.Configure<DeviceDiscoveryOptions>(
             configuration.GetSection(DeviceDiscoveryOptions.SectionName));
         services.AddSingleton<IDeviceDiscoveryService, DeviceDiscoveryService>();

@@ -38,11 +38,11 @@ public sealed class CardEnrollmentService(
             return new CardEnrollmentResult(false, uid, "Card already registered");
         }
 
-        var card = AccessCard.Create(uid, device.ZoneId, $"Enrolled via {device.Name}");
+        var card = AccessCard.Create(uid, $"Enrolled via {device.Name}");
         await cardRepository.AddAsync(card, cancellationToken);
         await cardRepository.SaveChangesAsync(cancellationToken);
 
-        logger.LogInformation("Card {Uid} enrolled via device {DeviceName}", uid, device.Name);
+        logger.LogInformation("Card {Uid} enrolled via device {DeviceName}. Assign a cardholder to grant access", uid, device.Name);
 
         await SafeNotifyAsync(new CardEnrolledNotification(
             uid, card.Id, device.Id, device.Name, device.ZoneId, zoneName,

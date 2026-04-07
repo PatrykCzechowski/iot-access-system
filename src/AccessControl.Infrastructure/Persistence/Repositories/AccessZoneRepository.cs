@@ -24,7 +24,7 @@ public sealed class AccessZoneRepository(AccessControlDbContext context) : IAcce
                 z.Name,
                 z.Description,
                 context.Devices.Count(d => d.ZoneId == z.Id),
-                context.AccessCards.Count(c => c.ZoneId == z.Id),
+                z.AccessProfileZones.Count,
                 z.CreatedAt))
             .ToArrayAsync(cancellationToken);
     }
@@ -39,7 +39,7 @@ public sealed class AccessZoneRepository(AccessControlDbContext context) : IAcce
                 z.Name,
                 z.Description,
                 context.Devices.Count(d => d.ZoneId == z.Id),
-                context.AccessCards.Count(c => c.ZoneId == z.Id),
+                z.AccessProfileZones.Count,
                 z.CreatedAt))
             .FirstOrDefaultAsync(cancellationToken);
     }
@@ -76,10 +76,10 @@ public sealed class AccessZoneRepository(AccessControlDbContext context) : IAcce
             .CountAsync(d => d.ZoneId == zoneId, cancellationToken);
     }
 
-    public async Task<int> GetCardCountAsync(Guid zoneId, CancellationToken cancellationToken)
+    public async Task<int> GetProfileCountAsync(Guid zoneId, CancellationToken cancellationToken)
     {
-        return await context.AccessCards
-            .CountAsync(c => c.ZoneId == zoneId, cancellationToken);
+        return await context.AccessProfileZones
+            .CountAsync(apz => apz.AccessZoneId == zoneId, cancellationToken);
     }
 
     public async Task AddAsync(AccessZone zone, CancellationToken cancellationToken)

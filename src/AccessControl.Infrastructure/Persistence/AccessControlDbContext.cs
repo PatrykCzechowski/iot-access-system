@@ -12,6 +12,9 @@ public class AccessControlDbContext(DbContextOptions<AccessControlDbContext> opt
     public DbSet<AccessCard> AccessCards => Set<AccessCard>();
     public DbSet<AccessZone> AccessZones => Set<AccessZone>();
     public DbSet<AccessLog> AccessLogs => Set<AccessLog>();
+    public DbSet<Cardholder> Cardholders => Set<Cardholder>();
+    public DbSet<AccessProfile> AccessProfiles => Set<AccessProfile>();
+    public DbSet<AccessProfileZone> AccessProfileZones => Set<AccessProfileZone>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

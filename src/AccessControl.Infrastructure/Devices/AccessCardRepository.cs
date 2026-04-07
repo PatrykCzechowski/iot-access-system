@@ -11,6 +11,7 @@ public sealed class AccessCardRepository(AccessControlDbContext context) : IAcce
     {
         return await context.AccessCards
             .AsNoTracking()
+            .Include(c => c.Cardholder)
             .OrderByDescending(c => c.CreatedAt)
             .ToArrayAsync(cancellationToken);
     }
@@ -19,6 +20,7 @@ public sealed class AccessCardRepository(AccessControlDbContext context) : IAcce
     {
         return await context.AccessCards
             .AsNoTracking()
+            .Include(c => c.Cardholder)
             .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
     }
 
@@ -31,7 +33,18 @@ public sealed class AccessCardRepository(AccessControlDbContext context) : IAcce
     {
         return await context.AccessCards
             .AsNoTracking()
+            .Include(c => c.Cardholder)
             .FirstOrDefaultAsync(c => c.CardUid == cardUid, cancellationToken);
+    }
+
+    public async Task<bool> HasAccessToZoneAsync(string cardUid, Guid zoneId, CancellationToken cancellationToken)
+    {
+        return await context.AccessCards
+            .Where(c => c.CardUid == cardUid && c.IsActive)
+            .Where(c => c.Cardholder != null)
+            .SelectMany(c => c.Cardholder!.AccessProfiles)
+            .SelectMany(p => p.AccessProfileZones)
+            .AnyAsync(apz => apz.AccessZoneId == zoneId, cancellationToken);
     }
 
     public async Task<bool> ExistsByCardUidAsync(string cardUid, CancellationToken cancellationToken)
