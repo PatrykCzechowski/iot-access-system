@@ -4,6 +4,5 @@ namespace AccessControl.Application.Cards.Commands;
 
 public record CreateAccessCardCommand(
     string CardUid,
-    Guid ZoneId,
-    string? UserId,
+    Guid? CardholderId,
     string? Label) : IRequest<Guid>;

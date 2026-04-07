@@ -9,8 +9,9 @@ public sealed class UpdateAccessCardCommandValidator : AbstractValidator<UpdateA
         RuleFor(x => x.Id)
             .NotEqual(Guid.Empty);
 
-        RuleFor(x => x.ZoneId)
-            .NotEqual(Guid.Empty);
+        RuleFor(x => x.CardholderId)
+            .NotEqual(Guid.Empty)
+            .When(x => x.CardholderId.HasValue);
 
         RuleFor(x => x.Label)
             .MaximumLength(200)

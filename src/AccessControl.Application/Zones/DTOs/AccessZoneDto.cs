@@ -5,5 +5,5 @@ public record AccessZoneDto(
     string Name,
     string? Description,
     int DeviceCount,
-    int CardCount,
+    int ProfileCount,
     DateTime CreatedAt);

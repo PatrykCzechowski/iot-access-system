@@ -19,7 +19,7 @@ public sealed class GetAccessZonesQueryHandler(IAccessZoneRepository repository)
                 s.Name,
                 s.Description,
                 s.DeviceCount,
-                s.CardCount,
+                s.ProfileCount,
                 s.CreatedAt))
             .ToArray();
     }

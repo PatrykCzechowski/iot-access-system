@@ -19,11 +19,11 @@ public sealed class DeleteAccessZoneCommandHandler(IAccessZoneRepository reposit
                 $"Cannot delete zone '{zone.Name}' because it still has {deviceCount} assigned device(s).");
         }
 
-        var cardCount = await repository.GetCardCountAsync(request.Id, cancellationToken);
-        if (cardCount > 0)
+        var profileCount = await repository.GetProfileCountAsync(request.Id, cancellationToken);
+        if (profileCount > 0)
         {
             throw new BusinessRuleException(
-                $"Cannot delete zone '{zone.Name}' because it still has {cardCount} assigned card(s).");
+                $"Cannot delete zone '{zone.Name}' because it is still assigned to {profileCount} access profile(s).");
         }
 
         repository.Remove(zone);

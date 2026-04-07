@@ -10,8 +10,9 @@ public sealed class CreateAccessCardCommandValidator : AbstractValidator<CreateA
             .NotEmpty()
             .MaximumLength(20);
 
-        RuleFor(x => x.ZoneId)
-            .NotEqual(Guid.Empty);
+        RuleFor(x => x.CardholderId)
+            .NotEqual(Guid.Empty)
+            .When(x => x.CardholderId.HasValue);
 
         RuleFor(x => x.Label)
             .MaximumLength(200)

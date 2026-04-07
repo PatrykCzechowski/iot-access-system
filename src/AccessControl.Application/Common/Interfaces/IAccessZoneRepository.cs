@@ -12,7 +12,7 @@ public interface IAccessZoneRepository
     Task<bool> ExistsByNameAsync(string name, CancellationToken cancellationToken);
     Task<bool> ExistsByNameAsync(string name, Guid excludeId, CancellationToken cancellationToken);
     Task<int> GetDeviceCountAsync(Guid zoneId, CancellationToken cancellationToken);
-    Task<int> GetCardCountAsync(Guid zoneId, CancellationToken cancellationToken);
+    Task<int> GetProfileCountAsync(Guid zoneId, CancellationToken cancellationToken);
     Task AddAsync(AccessZone zone, CancellationToken cancellationToken);
     void Remove(AccessZone zone);
     Task SaveChangesAsync(CancellationToken cancellationToken);
@@ -23,5 +23,5 @@ public record AccessZoneSummary(
     string Name,
     string? Description,
     int DeviceCount,
-    int CardCount,
+    int ProfileCount,
     DateTime CreatedAt);

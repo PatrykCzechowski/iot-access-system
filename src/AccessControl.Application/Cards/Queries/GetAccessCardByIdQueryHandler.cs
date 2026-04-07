@@ -17,8 +17,8 @@ public sealed class GetAccessCardByIdQueryHandler(IAccessCardRepository reposito
         return new AccessCardDto(
             card.Id,
             card.CardUid,
-            card.UserId,
-            card.ZoneId,
+            card.CardholderId,
+            card.Cardholder?.FullName,
             card.IsActive,
             card.Label,
             card.CreatedAt,

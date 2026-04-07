@@ -5,7 +5,9 @@ using MediatR;
 
 namespace AccessControl.Application.Cards.Commands;
 
-public sealed class CreateAccessCardCommandHandler(IAccessCardRepository repository)
+public sealed class CreateAccessCardCommandHandler(
+    IAccessCardRepository repository,
+    ICardholderRepository cardholderRepository)
     : IRequestHandler<CreateAccessCardCommand, Guid>
 {
     public async Task<Guid> Handle(CreateAccessCardCommand request, CancellationToken cancellationToken)
@@ -18,11 +20,13 @@ public sealed class CreateAccessCardCommandHandler(IAccessCardRepository reposit
             throw new BusinessRuleException($"Card with UID '{normalizedUid}' is already registered.");
         }
 
-        var card = AccessCard.Create(request.CardUid, request.ZoneId, request.Label);
+        var card = AccessCard.Create(request.CardUid, request.Label);
 
-        if (!string.IsNullOrWhiteSpace(request.UserId))
+        if (request.CardholderId.HasValue)
         {
-            card.AssignUser(request.UserId);
+            var cardholder = await cardholderRepository.GetByIdAsync(request.CardholderId.Value, cancellationToken)
+                             ?? throw new KeyNotFoundException($"Cardholder '{request.CardholderId.Value}' not found.");
+            card.AssignCardholder(cardholder.Id);
         }
 
         await repository.AddAsync(card, cancellationToken);

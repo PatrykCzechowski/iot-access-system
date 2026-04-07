@@ -19,7 +19,7 @@ public sealed class GetAccessZoneByIdQueryHandler(IAccessZoneRepository reposito
             summary.Name,
             summary.Description,
             summary.DeviceCount,
-            summary.CardCount,
+            summary.ProfileCount,
             summary.CreatedAt);
     }
 }
