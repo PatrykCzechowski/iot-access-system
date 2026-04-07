@@ -77,7 +77,6 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
-    app.MapDevSeedEndpoints();
 }
 
 app.UseCors("BlazorWasmPolicy");
@@ -98,5 +97,7 @@ app.MapDeviceEndpoints();
 app.MapCardEndpoints();
 app.MapZoneEndpoints();
 app.MapAccessLogEndpoints();
+app.MapCardholderEndpoints();
+app.MapAccessProfileEndpoints();
 
 app.Run();

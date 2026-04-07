@@ -15,11 +15,11 @@ public static class CardEndpoints
             .WithGetById<AccessCardDto>("GetCardById", id => new GetAccessCardByIdQuery(id))
             .WithCreate<CreateAccessCardCommand>("CreateCard", "GetCardById")
             .WithUpdate("UpdateCard", (Guid id, UpdateCardRequest body) =>
-                new UpdateAccessCardCommand(id, body.ZoneId, body.UserId, body.Label, body.IsActive))
+                new UpdateAccessCardCommand(id, body.CardholderId, body.Label, body.IsActive))
             .WithDelete("DeleteCard", id => new DeleteAccessCardCommand(id));
 
         return app;
     }
 
-    private record UpdateCardRequest(Guid ZoneId, string? UserId, string? Label, bool IsActive);
+    private record UpdateCardRequest(Guid? CardholderId, string? Label, bool IsActive);
 }
