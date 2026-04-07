@@ -2,9 +2,9 @@ using AccessControl.Domain.Exceptions;
 
 namespace AccessControl.Domain.Entities;
 
-public class AccessZone
+public class AccessProfile
 {
-    private AccessZone() { }
+    private AccessProfile() { }
 
     public Guid Id { get; init; }
     public string Name { get; private set; } = null!;
@@ -12,26 +12,22 @@ public class AccessZone
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; private set; }
 
+    public ICollection<Cardholder> Cardholders { get; } = new List<Cardholder>();
     public ICollection<AccessProfileZone> AccessProfileZones { get; } = new List<AccessProfileZone>();
 
-    public static AccessZone Create(string name, string? description = null, Guid? id = null)
+    public static AccessProfile Create(string name, string? description = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         if (name.Length > 100)
         {
-            throw new DomainValidationException("Zone name cannot exceed 100 characters.");
-        }
-
-        if (description is { Length: > 500 })
-        {
-            throw new DomainValidationException("Zone description cannot exceed 500 characters.");
+            throw new DomainValidationException("Profile name cannot exceed 100 characters.");
         }
 
         var now = DateTime.UtcNow;
 
-        return new AccessZone
+        return new AccessProfile
         {
-            Id = id ?? Guid.NewGuid(),
+            Id = Guid.NewGuid(),
             Name = name.Trim(),
             Description = description?.Trim(),
             CreatedAt = now,
@@ -39,25 +35,15 @@ public class AccessZone
         };
     }
 
-    public void UpdateName(string name)
+    public void Update(string name, string? description)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         if (name.Length > 100)
         {
-            throw new DomainValidationException("Zone name cannot exceed 100 characters.");
+            throw new DomainValidationException("Profile name cannot exceed 100 characters.");
         }
 
         Name = name.Trim();
-        UpdatedAt = DateTime.UtcNow;
-    }
-
-    public void UpdateDescription(string? description)
-    {
-        if (description is { Length: > 500 })
-        {
-            throw new DomainValidationException("Zone description cannot exceed 500 characters.");
-        }
-
         Description = description?.Trim();
         UpdatedAt = DateTime.UtcNow;
     }
