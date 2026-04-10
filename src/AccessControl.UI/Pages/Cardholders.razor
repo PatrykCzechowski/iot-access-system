@@ -5,6 +5,7 @@
 @inject ICardholderService CardholderService
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject NavigationManager Nav
 
 <PageTitle>Cardholders</PageTitle>
 
@@ -26,14 +27,17 @@ else if (_cardholders.Count == 0)
 }
 else
 {
-    <MudTable Items="_cardholders" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" Striped="true">
+    <MudTable T="CardholderItem" Items="_cardholders" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" Striped="true"
+              OnRowClick="@(args => { if (args.Item is not null) Nav.NavigateTo($"/cardholders/{args.Item.Id}"); })"
+              RowClass="cursor-pointer">
         <HeaderContent>
             <MudTh>First Name</MudTh>
             <MudTh>Last Name</MudTh>
             <MudTh>Email</MudTh>
             <MudTh>Phone</MudTh>
             <MudTh>Cards</MudTh>
-            <MudTh Style="width: 120px;">Actions</MudTh>
+            <MudTh>Profiles</MudTh>
+            <MudTh Style="width: 60px;"></MudTh>
         </HeaderContent>
         <RowTemplate>
             <MudTd DataLabel="First Name">
@@ -43,11 +47,12 @@ else
             <MudTd DataLabel="Email">@(context.Email ?? "—")</MudTd>
             <MudTd DataLabel="Phone">@(context.PhoneNumber ?? "—")</MudTd>
             <MudTd DataLabel="Cards">@context.CardCount</MudTd>
+            <MudTd DataLabel="Profiles">@context.AccessProfileIds.Count</MudTd>
             <MudTd>
-                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
-                               OnClick="@(() => OpenEditDialog(context))" />
-                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
-                               OnClick="@(() => DeleteCardholderAsync(context))" />
+                <span @onclick:stopPropagation="true">
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                   OnClick="@(() => DeleteCardholderAsync(context))" />
+                </span>
             </MudTd>
         </RowTemplate>
     </MudTable>
@@ -108,35 +113,6 @@ else
             catch (FlurlHttpException)
             {
                 Snackbar.Add("Failed to create cardholder.", Severity.Error);
-            }
-        }
-    }
-
-    private async Task OpenEditDialog(CardholderItem cardholder)
-    {
-        var parameters = new DialogParameters<CardholderDialog>
-        {
-            { x => x.FirstName, cardholder.FirstName },
-            { x => x.LastName, cardholder.LastName },
-            { x => x.Email, cardholder.Email },
-            { x => x.PhoneNumber, cardholder.PhoneNumber }
-        };
-
-        var dialog = await DialogService.ShowAsync<CardholderDialog>("Edit Cardholder", parameters,
-            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
-        var result = await dialog.Result;
-
-        if (result is { Canceled: false, Data: CardholderDialogResult data })
-        {
-            try
-            {
-                await CardholderService.UpdateCardholderAsync(cardholder.Id, data.FirstName, data.LastName, data.Email, data.PhoneNumber);
-                Snackbar.Add("Cardholder updated.", Severity.Success);
-                await LoadDataAsync();
-            }
-            catch (FlurlHttpException)
-            {
-                Snackbar.Add("Failed to update cardholder.", Severity.Error);
             }
         }
     }

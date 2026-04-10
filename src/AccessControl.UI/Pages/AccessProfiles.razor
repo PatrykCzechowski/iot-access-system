@@ -3,9 +3,9 @@
 @using AccessControl.UI.Services
 @attribute [Authorize]
 @inject IAccessProfileService ProfileService
-@inject IZoneService ZoneService
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject NavigationManager Nav
 
 <PageTitle>Access Profiles</PageTitle>
 
@@ -27,13 +27,15 @@ else if (_profiles.Count == 0)
 }
 else
 {
-    <MudTable Items="_profiles" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" Striped="true">
+    <MudTable T="AccessProfileItem" Items="_profiles" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" Striped="true"
+              OnRowClick="@(args => { if (args.Item is not null) Nav.NavigateTo($"/access-profiles/{args.Item.Id}"); })"
+              RowClass="cursor-pointer">
         <HeaderContent>
             <MudTh>Name</MudTh>
             <MudTh>Description</MudTh>
             <MudTh>Zones</MudTh>
             <MudTh>Cardholders</MudTh>
-            <MudTh Style="width: 120px;">Actions</MudTh>
+            <MudTh Style="width: 60px;"></MudTh>
         </HeaderContent>
         <RowTemplate>
             <MudTd DataLabel="Name">
@@ -42,24 +44,13 @@ else
             <MudTd DataLabel="Description">
                 <MudText Typo="Typo.body2" Color="Color.Secondary">@(context.Description ?? "—")</MudText>
             </MudTd>
-            <MudTd DataLabel="Zones">
-                @foreach (var zoneId in context.ZoneIds)
-                {
-                    <MudChip T="string" Size="Size.Small" Color="Color.Info" Class="mr-1 mb-1">
-                        @GetZoneName(zoneId)
-                    </MudChip>
-                }
-                @if (context.ZoneIds.Count == 0)
-                {
-                    <MudText Typo="Typo.body2" Color="Color.Secondary">—</MudText>
-                }
-            </MudTd>
+            <MudTd DataLabel="Zones">@context.ZoneIds.Count</MudTd>
             <MudTd DataLabel="Cardholders">@context.CardholderCount</MudTd>
             <MudTd>
-                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
-                               OnClick="@(() => OpenEditDialog(context))" />
-                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
-                               OnClick="@(() => DeleteProfileAsync(context))" />
+                <span @onclick:stopPropagation="true">
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                   OnClick="@(() => DeleteProfileAsync(context))" />
+                </span>
             </MudTd>
         </RowTemplate>
     </MudTable>
@@ -67,7 +58,6 @@ else
 
 @code {
     private List<AccessProfileItem> _profiles = [];
-    private List<ZoneItem> _zones = [];
     private bool _loading = true;
 
     protected override async Task OnInitializedAsync()
@@ -80,10 +70,7 @@ else
         _loading = true;
         try
         {
-            var profilesTask = ProfileService.GetProfilesAsync();
-            var zonesTask = ZoneService.GetZonesAsync();
-            _profiles = await profilesTask;
-            _zones = await zonesTask;
+            _profiles = await ProfileService.GetProfilesAsync();
         }
         catch (FlurlHttpException ex) when (ex.StatusCode == 401)
         {
@@ -99,17 +86,12 @@ else
         }
     }
 
-    private string GetZoneName(Guid zoneId) =>
-        _zones.FirstOrDefault(z => z.Id == zoneId)?.Name ?? "Unknown";
-
     private async Task OpenCreateDialog()
     {
         var parameters = new DialogParameters<AccessProfileDialog>
         {
             { x => x.Name, string.Empty },
-            { x => x.Description, null },
-            { x => x.SelectedZoneIds, new HashSet<Guid>() },
-            { x => x.AvailableZones, _zones }
+            { x => x.Description, null }
         };
 
         var dialog = await DialogService.ShowAsync<AccessProfileDialog>("New Access Profile", parameters,
@@ -120,42 +102,13 @@ else
         {
             try
             {
-                await ProfileService.CreateProfileAsync(data.Name, data.Description, data.ZoneIds);
+                await ProfileService.CreateProfileAsync(data.Name, data.Description);
                 Snackbar.Add("Profile created.", Severity.Success);
                 await LoadDataAsync();
             }
             catch (FlurlHttpException)
             {
                 Snackbar.Add("Failed to create profile.", Severity.Error);
-            }
-        }
-    }
-
-    private async Task OpenEditDialog(AccessProfileItem profile)
-    {
-        var parameters = new DialogParameters<AccessProfileDialog>
-        {
-            { x => x.Name, profile.Name },
-            { x => x.Description, profile.Description },
-            { x => x.SelectedZoneIds, new HashSet<Guid>(profile.ZoneIds) },
-            { x => x.AvailableZones, _zones }
-        };
-
-        var dialog = await DialogService.ShowAsync<AccessProfileDialog>("Edit Access Profile", parameters,
-            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
-        var result = await dialog.Result;
-
-        if (result is { Canceled: false, Data: AccessProfileDialogResult data })
-        {
-            try
-            {
-                await ProfileService.UpdateProfileAsync(profile.Id, data.Name, data.Description, data.ZoneIds);
-                Snackbar.Add("Profile updated.", Severity.Success);
-                await LoadDataAsync();
-            }
-            catch (FlurlHttpException)
-            {
-                Snackbar.Add("Failed to update profile.", Severity.Error);
             }
         }
     }

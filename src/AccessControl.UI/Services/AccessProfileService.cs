@@ -8,9 +8,12 @@ public sealed class AccessProfileService(IFlurlClient flurlClient) : IAccessProf
     public Task<List<AccessProfileItem>> GetProfilesAsync()
         => flurlClient.Request("api/access-profiles").GetJsonAsync<List<AccessProfileItem>>();
 
-    public Task CreateProfileAsync(string name, string? description, List<Guid> zoneIds)
+    public Task<AccessProfileItem> GetProfileAsync(Guid id)
+        => flurlClient.Request("api/access-profiles", id).GetJsonAsync<AccessProfileItem>();
+
+    public Task CreateProfileAsync(string name, string? description)
         => flurlClient.Request("api/access-profiles")
-            .PostJsonAsync(new { Name = name, Description = description, ZoneIds = zoneIds });
+            .PostJsonAsync(new { Name = name, Description = description });
 
     public Task UpdateProfileAsync(Guid id, string name, string? description, List<Guid> zoneIds)
         => flurlClient.Request("api/access-profiles", id)

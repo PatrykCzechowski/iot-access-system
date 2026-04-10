@@ -7,18 +7,6 @@
                           Variant="Variant.Outlined" />
             <MudTextField @bind-Value="Description" Label="Description" MaxLength="500"
                           Lines="3" Variant="Variant.Outlined" />
-
-            <MudText Typo="Typo.subtitle2" Class="mt-2">Zones</MudText>
-            <MudSelect T="Guid" MultiSelection="true" SelectedValues="_selectedZoneIds"
-                       SelectedValuesChanged="OnZonesChanged"
-                       Label="Select zones" Variant="Variant.Outlined"
-                       AnchorOrigin="Origin.BottomCenter"
-                       MultiSelectionTextFunc="@(ids => $"{ids.Count()} zone(s) selected")">
-                @foreach (var zone in AvailableZones)
-                {
-                    <MudSelectItem T="Guid" Value="zone.Id">@zone.Name</MudSelectItem>
-                }
-            </MudSelect>
         </MudStack>
     </DialogContent>
     <DialogActions>
@@ -33,20 +21,6 @@
 
     [Parameter] public string Name { get; set; } = string.Empty;
     [Parameter] public string? Description { get; set; }
-    [Parameter] public IEnumerable<Guid> SelectedZoneIds { get; set; } = new HashSet<Guid>();
-    [Parameter] public List<ZoneItem> AvailableZones { get; set; } = [];
-
-    private IReadOnlyCollection<Guid> _selectedZoneIds = [];
-
-    protected override void OnInitialized()
-    {
-        _selectedZoneIds = SelectedZoneIds.ToList();
-    }
-
-    private void OnZonesChanged(IReadOnlyCollection<Guid> values)
-    {
-        _selectedZoneIds = values;
-    }
 
     private void Cancel() => MudDialog.Cancel();
 
@@ -59,6 +33,6 @@
         }
 
         MudDialog.Close(DialogResult.Ok(new AccessProfileDialogResult(
-            Name.Trim(), Description?.Trim(), _selectedZoneIds.ToList())));
+            Name.Trim(), Description?.Trim())));
     }
 }

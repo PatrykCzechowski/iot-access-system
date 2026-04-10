@@ -1,0 +1,176 @@
+@page "/access-profiles/{Id:guid}"
+@using Flurl.Http
+@using AccessControl.UI.Services
+@attribute [Authorize]
+@inject IAccessProfileService ProfileService
+@inject IZoneService ZoneService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager Nav
+
+<PageTitle>@(_profile?.Name ?? "Access Profile")</PageTitle>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+}
+else if (_profile is null)
+{
+    <MudAlert Severity="Severity.Error">Access profile not found.</MudAlert>
+}
+else
+{
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => Nav.NavigateTo("/access-profiles"))" />
+            <MudText Typo="Typo.h5">@_profile.Name</MudText>
+        </MudStack>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Edit" OnClick="OpenEditDialog">
+            Edit
+        </MudButton>
+    </MudStack>
+
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudText Typo="Typo.subtitle1" Class="mb-3">General</MudText>
+                <MudStack Spacing="2">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Name</MudText>
+                        <MudText Typo="Typo.body2">@_profile.Name</MudText>
+                    </MudStack>
+                    <MudDivider />
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Description</MudText>
+                        <MudText Typo="Typo.body2">@(_profile.Description ?? "—")</MudText>
+                    </MudStack>
+                    <MudDivider />
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Cardholders</MudText>
+                        <MudText Typo="Typo.body2">@_profile.CardholderCount</MudText>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudText Typo="Typo.subtitle1" Class="mb-3">Zones</MudText>
+                <MudSelect T="Guid" Label="Assigned Zones" MultiSelection="true" @bind-SelectedValues="_selectedZoneIds"
+                           Variant="Variant.Outlined" Dense="true" Class="mb-3"
+                           ToStringFunc="@(id => _zoneNames.GetValueOrDefault(id, id.ToString()))">
+                    @foreach (var zone in _allZones)
+                    {
+                        <MudSelectItem T="Guid" Value="@zone.Id">@zone.Name</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                           OnClick="SaveZones" Disabled="_savingZones">
+                    @if (_savingZones)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    }
+                    Save Zones
+                </MudButton>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private AccessProfileItem? _profile;
+    private List<ZoneItem> _allZones = [];
+    private Dictionary<Guid, string> _zoneNames = new();
+    private IReadOnlyCollection<Guid> _selectedZoneIds = [];
+    private bool _loading = true;
+    private bool _savingZones;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _loading = true;
+        try
+        {
+            var profileTask = ProfileService.GetProfileAsync(Id);
+            var zonesTask = ZoneService.GetZonesAsync();
+            _profile = await profileTask;
+            _allZones = await zonesTask;
+            _zoneNames = _allZones.ToDictionary(z => z.Id, z => z.Name);
+            _selectedZoneIds = _profile.ZoneIds.ToHashSet();
+        }
+        catch (FlurlHttpException ex) when (ex.StatusCode == 404)
+        {
+            Snackbar.Add("Access profile not found.", Severity.Error);
+        }
+        catch (FlurlHttpException ex) when (ex.StatusCode == 401)
+        {
+            Snackbar.Add("Unauthorized.", Severity.Error);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Failed to load access profile.", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OpenEditDialog()
+    {
+        if (_profile is null) return;
+
+        var parameters = new DialogParameters<AccessProfileDialog>
+        {
+            { x => x.Name, _profile.Name },
+            { x => x.Description, _profile.Description }
+        };
+
+        var dialog = await DialogService.ShowAsync<AccessProfileDialog>("Edit Access Profile", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: AccessProfileDialogResult data })
+        {
+            try
+            {
+                await ProfileService.UpdateProfileAsync(Id, data.Name, data.Description,
+                    _profile.ZoneIds.ToList());
+                Snackbar.Add("Profile updated.", Severity.Success);
+                await LoadDataAsync();
+            }
+            catch (FlurlHttpException)
+            {
+                Snackbar.Add("Failed to update profile.", Severity.Error);
+            }
+        }
+    }
+
+    private async Task SaveZones()
+    {
+        if (_profile is null) return;
+
+        _savingZones = true;
+        try
+        {
+            await ProfileService.UpdateProfileAsync(Id, _profile.Name, _profile.Description,
+                _selectedZoneIds.ToList());
+            Snackbar.Add("Zones updated.", Severity.Success);
+            await LoadDataAsync();
+        }
+        catch (FlurlHttpException)
+        {
+            Snackbar.Add("Failed to update zones.", Severity.Error);
+        }
+        finally
+        {
+            _savingZones = false;
+        }
+    }
+}

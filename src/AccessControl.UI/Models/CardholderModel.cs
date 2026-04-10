@@ -6,7 +6,8 @@ public sealed record CardholderItem(
     string LastName,
     string? Email,
     string? PhoneNumber,
-    int CardCount)
+    int CardCount,
+    List<Guid> AccessProfileIds)
 {
     public string FullName => $"{FirstName} {LastName}";
 }

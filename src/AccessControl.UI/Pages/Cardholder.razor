@@ -1,0 +1,189 @@
+@page "/cardholders/{Id:guid}"
+@using Flurl.Http
+@using AccessControl.UI.Services
+@attribute [Authorize]
+@inject ICardholderService CardholderService
+@inject IAccessProfileService ProfileService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager Nav
+
+<PageTitle>@(_cardholder?.FullName ?? "Cardholder")</PageTitle>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+}
+else if (_cardholder is null)
+{
+    <MudAlert Severity="Severity.Error">Cardholder not found.</MudAlert>
+}
+else
+{
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => Nav.NavigateTo("/cardholders"))" />
+            <MudText Typo="Typo.h5">@_cardholder.FullName</MudText>
+        </MudStack>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Edit" OnClick="OpenEditDialog">
+            Edit
+        </MudButton>
+    </MudStack>
+
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudText Typo="Typo.subtitle1" Class="mb-3">General</MudText>
+                <MudStack Spacing="2">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">First Name</MudText>
+                        <MudText Typo="Typo.body2">@_cardholder.FirstName</MudText>
+                    </MudStack>
+                    <MudDivider />
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Last Name</MudText>
+                        <MudText Typo="Typo.body2">@_cardholder.LastName</MudText>
+                    </MudStack>
+                    <MudDivider />
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Email</MudText>
+                        <MudText Typo="Typo.body2">@(_cardholder.Email ?? "—")</MudText>
+                    </MudStack>
+                    <MudDivider />
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Phone</MudText>
+                        <MudText Typo="Typo.body2">@(_cardholder.PhoneNumber ?? "—")</MudText>
+                    </MudStack>
+                    <MudDivider />
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Cards</MudText>
+                        <MudText Typo="Typo.body2">@_cardholder.CardCount</MudText>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudText Typo="Typo.subtitle1" Class="mb-3">Access Profiles</MudText>
+                <MudSelect T="Guid" Label="Assigned Profiles" MultiSelection="true" @bind-SelectedValues="_selectedProfileIds"
+                           Variant="Variant.Outlined" Dense="true" Class="mb-3"
+                           ToStringFunc="@(id => _profileNames.GetValueOrDefault(id, id.ToString()))">
+                    @foreach (var profile in _allProfiles)
+                    {
+                        <MudSelectItem T="Guid" Value="@profile.Id">@profile.Name</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                           OnClick="SaveProfiles" Disabled="_savingProfiles">
+                    @if (_savingProfiles)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    }
+                    Save Profiles
+                </MudButton>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private CardholderItem? _cardholder;
+    private List<AccessProfileItem> _allProfiles = [];
+    private Dictionary<Guid, string> _profileNames = new();
+    private IReadOnlyCollection<Guid> _selectedProfileIds = [];
+    private bool _loading = true;
+    private bool _savingProfiles;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _loading = true;
+        try
+        {
+            var cardholderTask = CardholderService.GetCardholderAsync(Id);
+            var profilesTask = ProfileService.GetProfilesAsync();
+            _cardholder = await cardholderTask;
+            _allProfiles = await profilesTask;
+            _profileNames = _allProfiles.ToDictionary(p => p.Id, p => p.Name);
+            _selectedProfileIds = _cardholder.AccessProfileIds.ToHashSet();
+        }
+        catch (FlurlHttpException ex) when (ex.StatusCode == 404)
+        {
+            Snackbar.Add("Cardholder not found.", Severity.Error);
+        }
+        catch (FlurlHttpException ex) when (ex.StatusCode == 401)
+        {
+            Snackbar.Add("Unauthorized.", Severity.Error);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Failed to load cardholder.", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OpenEditDialog()
+    {
+        if (_cardholder is null) return;
+
+        var parameters = new DialogParameters<CardholderDialog>
+        {
+            { x => x.FirstName, _cardholder.FirstName },
+            { x => x.LastName, _cardholder.LastName },
+            { x => x.Email, _cardholder.Email },
+            { x => x.PhoneNumber, _cardholder.PhoneNumber }
+        };
+
+        var dialog = await DialogService.ShowAsync<CardholderDialog>("Edit Cardholder", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: CardholderDialogResult data })
+        {
+            try
+            {
+                await CardholderService.UpdateCardholderAsync(Id,
+                    data.FirstName, data.LastName, data.Email, data.PhoneNumber);
+                Snackbar.Add("Cardholder updated.", Severity.Success);
+                await LoadDataAsync();
+            }
+            catch (FlurlHttpException)
+            {
+                Snackbar.Add("Failed to update cardholder.", Severity.Error);
+            }
+        }
+    }
+
+    private async Task SaveProfiles()
+    {
+        if (_cardholder is null) return;
+
+        _savingProfiles = true;
+        try
+        {
+            await CardholderService.UpdateCardholderAsync(Id,
+                _cardholder.FirstName, _cardholder.LastName, _cardholder.Email, _cardholder.PhoneNumber,
+                _selectedProfileIds.ToList());
+            Snackbar.Add("Access profiles updated.", Severity.Success);
+            await LoadDataAsync();
+        }
+        catch (FlurlHttpException)
+        {
+            Snackbar.Add("Failed to update profiles.", Severity.Error);
+        }
+        finally
+        {
+            _savingProfiles = false;
+        }
+    }
+}
