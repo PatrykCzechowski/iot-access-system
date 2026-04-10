@@ -18,13 +18,16 @@ public sealed class CreateAccessProfileCommandHandler(IAccessProfileRepository r
 
         var profile = AccessProfile.Create(request.Name, request.Description);
 
-        foreach (var zoneId in request.ZoneIds)
+        if (request.ZoneIds is { Count: > 0 })
         {
-            profile.AccessProfileZones.Add(new AccessProfileZone
+            foreach (var zoneId in request.ZoneIds)
             {
-                AccessProfileId = profile.Id,
-                AccessZoneId = zoneId,
-            });
+                profile.AccessProfileZones.Add(new AccessProfileZone
+                {
+                    AccessProfileId = profile.Id,
+                    AccessZoneId = zoneId,
+                });
+            }
         }
 
         await repository.AddAsync(profile, cancellationToken);
