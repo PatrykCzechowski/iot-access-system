@@ -20,6 +20,7 @@ public sealed class GetCardholderByIdQueryHandler(ICardholderRepository reposito
             cardholder.LastName,
             cardholder.Email,
             cardholder.PhoneNumber,
-            cardholder.Cards.Count);
+            cardholder.Cards.Count,
+            cardholder.AccessProfiles.Select(p => p.Id).ToArray());
     }
 }

@@ -41,6 +41,13 @@ public sealed class AccessProfileRepository(AccessControlDbContext context) : IA
         return await context.AccessProfiles.FindAsync([id], cancellationToken);
     }
 
+    public async Task<List<AccessProfile>> GetByIdsTrackedAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken)
+    {
+        return await context.AccessProfiles
+            .Where(p => ids.Contains(p.Id))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<AccessProfile?> GetByIdWithZonesTrackedAsync(Guid id, CancellationToken cancellationToken)
     {
         return await context.AccessProfiles

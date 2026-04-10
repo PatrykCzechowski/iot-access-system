@@ -15,11 +15,16 @@ public static class CardholderEndpoints
             .WithGetById<CardholderDto>("GetCardholderById", id => new GetCardholderByIdQuery(id))
             .WithCreate<CreateCardholderCommand>("CreateCardholder", "GetCardholderById")
             .WithUpdate("UpdateCardholder", (Guid id, UpdateCardholderRequest body) =>
-                new UpdateCardholderCommand(id, body.FirstName, body.LastName, body.Email, body.PhoneNumber))
+                new UpdateCardholderCommand(id, body.FirstName, body.LastName, body.Email, body.PhoneNumber, body.AccessProfileIds))
             .WithDelete("DeleteCardholder", id => new DeleteCardholderCommand(id));
 
         return app;
     }
 
-    private record UpdateCardholderRequest(string FirstName, string LastName, string? Email, string? PhoneNumber);
+    private record UpdateCardholderRequest(
+        string FirstName,
+        string LastName,
+        string? Email,
+        string? PhoneNumber,
+        List<Guid>? AccessProfileIds = null);
 }

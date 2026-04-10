@@ -7,4 +7,5 @@ public record UpdateCardholderCommand(
     string FirstName,
     string LastName,
     string? Email,
-    string? PhoneNumber) : IRequest;
+    string? PhoneNumber,
+    List<Guid>? AccessProfileIds = null) : IRequest;

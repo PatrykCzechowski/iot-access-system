@@ -19,7 +19,8 @@ public sealed class CardholderRepository(AccessControlDbContext context) : ICard
                 c.LastName,
                 c.Email,
                 c.PhoneNumber,
-                c.Cards.Count))
+                c.Cards.Count,
+                c.AccessProfiles.Select(p => p.Id).ToArray()))
             .ToArrayAsync(cancellationToken);
     }
 
@@ -28,12 +29,20 @@ public sealed class CardholderRepository(AccessControlDbContext context) : ICard
         return await context.Cardholders
             .AsNoTracking()
             .Include(c => c.Cards)
+            .Include(c => c.AccessProfiles)
             .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
     }
 
     public async Task<Cardholder?> GetByIdTrackedAsync(Guid id, CancellationToken cancellationToken)
     {
         return await context.Cardholders.FindAsync([id], cancellationToken);
+    }
+
+    public async Task<Cardholder?> GetByIdWithProfilesTrackedAsync(Guid id, CancellationToken cancellationToken)
+    {
+        return await context.Cardholders
+            .Include(c => c.AccessProfiles)
+            .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
     }
 
     public async Task AddAsync(Cardholder cardholder, CancellationToken cancellationToken)

@@ -6,4 +6,5 @@ public record CardholderDto(
     string LastName,
     string? Email,
     string? PhoneNumber,
-    int CardCount);
+    int CardCount,
+    IReadOnlyCollection<Guid> AccessProfileIds);
