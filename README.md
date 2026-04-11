@@ -62,6 +62,18 @@ dotnet run --project src/AccessControl.UI        # separate terminal
 
 Migrations and admin account seeding are applied automatically on startup.
 
+#### Default credentials (local dev)
+
+| Service | Key | Value |
+|---------|-----|-------|
+| Admin account | Email | `admin@accesscontrol.local` |
+| Admin account | Password | `Admin123!` |
+| PostgreSQL | User | `access_user` |
+| PostgreSQL | Password | `access_pass` |
+| PostgreSQL | Database | `access_db` |
+
+The admin account is created with `MustChangePassword = true` — you will be prompted to change the password on first login.
+
 > **Network binding:** The API listens on `0.0.0.0:5104` (all interfaces) so
 > ESP32 devices on the local network can reach it. Do **not** run this on an
 > untrusted or public network without a firewall.
