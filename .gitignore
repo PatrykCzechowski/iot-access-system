@@ -63,6 +63,15 @@ ScaffoldingReadMe.txt
 ## Generated CAD output
 docs/enclosure/output/
 
+## Generated PDF documentation (regenerate via: python docs/tools/generate_pdf.py)
+docs/*.pdf
+docs/**/*.pdf
+!docs/tools/
+
+## Python
+__pycache__/
+*.pyc
+
 ## Windows
 Thumbs.db
 ehthumbs.db
