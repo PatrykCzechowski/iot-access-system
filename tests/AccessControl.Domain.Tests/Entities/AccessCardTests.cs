@@ -5,6 +5,8 @@ namespace AccessControl.Domain.Tests.Entities;
 
 public class AccessCardTests
 {
+    // --- Create ---
+
     [Fact]
     public void Create_WithValidUid_ReturnsCardWithCorrectProperties()
     {
@@ -22,29 +24,20 @@ public class AccessCardTests
         card.IsActive.Should().BeTrue();
         card.CardholderId.Should().BeNull();
         card.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
+        card.UpdatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
     }
 
     [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData(" ")]
-    public void Create_WithEmptyUid_ThrowsArgumentException(string? uid)
+    public void Create_WithInvalidUid_ThrowsArgumentException(string? uid)
     {
         // Act
         var act = () => AccessCard.Create(uid!);
 
         // Assert
         act.Should().Throw<ArgumentException>();
-    }
-
-    [Fact]
-    public void Create_WithLabel_TrimsWhiteSpace()
-    {
-        // Act
-        var card = AccessCard.Create("AABB", "  main door  ");
-
-        // Assert
-        card.Label.Should().Be("main door");
     }
 
     [Fact]
@@ -56,6 +49,18 @@ public class AccessCardTests
         // Assert
         card.Label.Should().BeNull();
     }
+
+    [Fact]
+    public void Create_WithLabel_TrimsWhitespace()
+    {
+        // Act
+        var card = AccessCard.Create("AABB", "  main door  ");
+
+        // Assert
+        card.Label.Should().Be("main door");
+    }
+
+    // --- NormalizeUid ---
 
     [Theory]
     [InlineData("ab:cd:ef:12", "AB:CD:EF:12")]
@@ -70,32 +75,21 @@ public class AccessCardTests
         result.Should().Be(expected);
     }
 
+    // --- AssignCardholder / UnassignCardholder ---
+
     [Fact]
-    public void AssignCardholder_WithValidId_SetsCardholderId()
+    public void AssignCardholder_WithValidId_SetsCardholderIdAndUpdatedAt()
     {
         // Arrange
         var card = AccessCard.Create("AABB");
-        var cardholder = Guid.NewGuid();
+        var cardholderId = Guid.NewGuid();
 
         // Act
-        card.AssignCardholder(cardholder);
+        card.AssignCardholder(cardholderId);
 
         // Assert
-        card.CardholderId.Should().Be(cardholder);
-    }
-
-    [Fact]
-    public void UnassignCardholder_WhenAssigned_ClearsCardholderId()
-    {
-        // Arrange
-        var card = AccessCard.Create("AABB");
-        card.AssignCardholder(Guid.NewGuid());
-
-        // Act
-        card.UnassignCardholder();
-
-        // Assert
-        card.CardholderId.Should().BeNull();
+        card.CardholderId.Should().Be(cardholderId);
+        card.UpdatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
     }
 
     [Fact]
@@ -113,6 +107,23 @@ public class AccessCardTests
     }
 
     [Fact]
+    public void UnassignCardholder_WhenAssigned_ClearsCardholderIdAndSetsUpdatedAt()
+    {
+        // Arrange
+        var card = AccessCard.Create("AABB");
+        card.AssignCardholder(Guid.NewGuid());
+
+        // Act
+        card.UnassignCardholder();
+
+        // Assert
+        card.CardholderId.Should().BeNull();
+        card.UpdatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
+    }
+
+    // --- Update ---
+
+    [Fact]
     public void Update_WithNewValues_UpdatesLabelAndIsActive()
     {
         // Arrange
@@ -128,17 +139,44 @@ public class AccessCardTests
     }
 
     [Fact]
+    public void Update_WithNullLabel_SetsLabelToNull()
+    {
+        // Arrange
+        var card = AccessCard.Create("AABB", "Some label");
+
+        // Act
+        card.Update(null, true);
+
+        // Assert
+        card.Label.Should().BeNull();
+    }
+
+    [Fact]
+    public void Update_TrimsLabel()
+    {
+        // Arrange
+        var card = AccessCard.Create("AABB");
+
+        // Act
+        card.Update("  front door  ", true);
+
+        // Assert
+        card.Label.Should().Be("front door");
+    }
+
+    // --- Deactivate ---
+
+    [Fact]
     public void Deactivate_WhenActive_SetsIsActiveToFalse()
     {
         // Arrange
         var card = AccessCard.Create("AABB");
-        card.IsActive.Should().BeTrue();
 
         // Act
         card.Deactivate();
 
         // Assert
         card.IsActive.Should().BeFalse();
+        card.UpdatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
     }
-
 }
