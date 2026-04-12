@@ -12,31 +12,34 @@ public class AccessProfileTests
     public void Create_WithValidName_ReturnsProfileWithCorrectProperties()
     {
         // Act
-        var accessProfile = AccessProfile.Create("Test Profile", "Test Description");
+        var profile = AccessProfile.Create("Test Profile", "Test Description");
 
         // Assert
-        accessProfile.Id.Should().NotBeEmpty();
-        accessProfile.Name.Should().Be("Test Profile");
-        accessProfile.Description.Should().Be("Test Description");
-        accessProfile.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
-        accessProfile.UpdatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
+        profile.Id.Should().NotBeEmpty();
+        profile.Name.Should().Be("Test Profile");
+        profile.Description.Should().Be("Test Description");
+        profile.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
+        profile.UpdatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
     }
 
     [Fact]
     public void Create_WithNullDescription_SetsDescriptionToNull()
     {
         // Act
-        var accessProfile = AccessProfile.Create("Test Profile");
+        var profile = AccessProfile.Create("Test Profile");
 
         // Assert
-        accessProfile.Description.Should().BeNull();
+        profile.Description.Should().BeNull();
     }
 
-    [Fact]
-    public void Create_WithNullName_ThrowsArgumentException()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void Create_WithInvalidName_ThrowsArgumentException(string? name)
     {
         // Act
-        var act = () => AccessProfile.Create(null!);
+        var act = () => AccessProfile.Create(name!);
 
         // Assert
         act.Should().Throw<ArgumentException>();
@@ -64,16 +67,6 @@ public class AccessProfileTests
     }
 
     [Fact]
-    public void Create_WithWhitespaceName_ThrowsArgumentException()
-    {
-        // Act
-        var act = () => AccessProfile.Create("   ");
-
-        // Assert
-        act.Should().Throw<ArgumentException>();
-    }
-
-    [Fact]
     public void Create_WithNameExceeding100Chars_ThrowsDomainValidationException()
     {
         // Act
@@ -89,26 +82,27 @@ public class AccessProfileTests
     public void Update_WithValidData_UpdatesNameAndDescription()
     {
         // Arrange
-        var updatedName = "Updated Name";
-        var updatedDescription = "Updated Description";
+        var profile = AccessProfile.Create("Test Profile", "Test Description");
 
         // Act
-        var accessProfile = AccessProfile.Create("Test Profile", "Test Description");
-        accessProfile.Update(updatedName, updatedDescription);
+        profile.Update("Updated Name", "Updated Description");
 
         // Assert
-        accessProfile.Name.Should().Be(updatedName);
-        accessProfile.Description.Should().Be(updatedDescription);
+        profile.Name.Should().Be("Updated Name");
+        profile.Description.Should().Be("Updated Description");
     }
 
-    [Fact]
-    public void Update_WithNullName_ThrowsArgumentException()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void Update_WithInvalidName_ThrowsArgumentException(string? name)
     {
         // Arrange
         var profile = AccessProfile.Create("Test Profile");
 
         // Act
-        var act = () => profile.Update(null!, null);
+        var act = () => profile.Update(name!, null);
 
         // Assert
         act.Should().Throw<ArgumentException>();
