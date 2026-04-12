@@ -170,4 +170,27 @@ public class AccessLogTests
         act.Should().Throw<DomainValidationException>()
             .WithMessage("*ZoneId*");
     }
+
+    // --- Message ---
+
+    [Fact]
+    public void Create_WithMessage_SetsMessage()
+    {
+        // Act
+        var log = CreateValid(message: "Door held open");
+
+        // Assert
+        log.Message.Should().Be("Door held open");
+    }
+
+    [Fact]
+    public void Create_WithGrantedAndMessage_BothAreSet()
+    {
+        // Act
+        var log = CreateValid(accessGranted: true, message: "VIP access");
+
+        // Assert
+        log.AccessGranted.Should().BeTrue();
+        log.Message.Should().Be("VIP access");
+    }
 }

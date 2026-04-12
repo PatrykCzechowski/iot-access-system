@@ -135,4 +135,53 @@ public class AccessProfileTests
         profile.UpdatedAt.Should().BeOnOrAfter(originalTimestamp);
     }
 
+    [Fact]
+    public void Create_TrimsDescriptionWhitespace()
+    {
+        // Act
+        var profile = AccessProfile.Create("Test Profile", "  Some description  ");
+
+        // Assert
+        profile.Description.Should().Be("Some description");
+    }
+
+    [Fact]
+    public void Update_TrimsNameWhitespace()
+    {
+        // Arrange
+        var profile = AccessProfile.Create("Test Profile");
+
+        // Act
+        profile.Update("  Updated Name  ", null);
+
+        // Assert
+        profile.Name.Should().Be("Updated Name");
+    }
+
+    [Fact]
+    public void Update_TrimsDescriptionWhitespace()
+    {
+        // Arrange
+        var profile = AccessProfile.Create("Test Profile");
+
+        // Act
+        profile.Update("Test Profile", "  Updated Description  ");
+
+        // Assert
+        profile.Description.Should().Be("Updated Description");
+    }
+
+    [Fact]
+    public void Update_WithNullDescription_ClearsDescription()
+    {
+        // Arrange
+        var profile = AccessProfile.Create("Test Profile", "Some description");
+
+        // Act
+        profile.Update("Test Profile", null);
+
+        // Assert
+        profile.Description.Should().BeNull();
+    }
+
 }
