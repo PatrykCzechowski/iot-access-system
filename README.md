@@ -1,5 +1,73 @@
 # AccessControl
 
+An IoT access control system: contactless NFC cards are read by ESP32-based
+readers, access rights are verified centrally by a .NET backend, and electric
+locks are released over MQTT. The whole system is managed from a Blazor
+WebAssembly admin panel.
+
+**Stack:** .NET 10 (Clean Architecture + CQRS) · Blazor WebAssembly + MudBlazor 9 ·
+PostgreSQL (EF Core) · MQTT (Mosquitto) · SignalR · mDNS · ESP32-S3 firmware
+(PlatformIO) · Docker Compose.
+
+## Features
+
+- Contactless NFC card authorization with server-side permission checks.
+- Access model: **Card → Cardholder → Access Profile → Zones**.
+- Device management: mDNS auto-discovery, remote MQTT provisioning, per-device
+  configuration, live online/offline status.
+- Card enrollment straight from a reader (enrollment mode).
+- Full audit trail of every access attempt (granted **and** denied), streamed
+  live to the UI via SignalR.
+- JWT authentication with the `Admin` role, forced password change on first
+  login, and rate-limited auth endpoints.
+
+## Web UI
+
+The administration panel is a Blazor WebAssembly app (MudBlazor, Material
+Design 3). Screenshots below are captured from a running instance with seeded
+demo data and live access logs.
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/01-login.png" alt="Login screen"><br><sub><b>Login</b> — JWT authentication</sub></td>
+<td width="50%"><img src="docs/screenshots/02-dashboard.png" alt="Dashboard"><br><sub><b>Dashboard</b> — management home</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/screenshots/03-zones.png" alt="Zones"><br><sub><b>Zones</b> — physical access areas</sub></td>
+<td width="50%"><img src="docs/screenshots/04-access-profiles.png" alt="Access profiles"><br><sub><b>Access Profiles</b> — permission sets over zones</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/screenshots/05-cardholders.png" alt="Cardholders"><br><sub><b>Cardholders</b> — people and their profiles</sub></td>
+<td width="50%"><img src="docs/screenshots/06-cards.png" alt="Cards"><br><sub><b>Cards</b> — NFC cards, status and assignment</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/screenshots/07-devices.png" alt="Devices"><br><sub><b>Devices</b> — readers/locks with online status</sub></td>
+<td width="50%"><img src="docs/screenshots/08-access-logs.png" alt="Access logs"><br><sub><b>Access Logs</b> — live audit (granted / denied)</sub></td>
+</tr>
+</table>
+
+> Screenshots live in [`docs/screenshots/`](docs/screenshots/) and are captured
+> with Playwright driving Google Chrome against the running UI.
+
+## Documentation
+
+The PDFs are **build artifacts** generated from source — they are git-ignored
+and produced on demand by the scripts below (output written to `docs/`).
+
+| Generated file | Contents | Source |
+|----------------|----------|--------|
+| `docs/dokumentacja-projektu.pdf` | Full project documentation — technical, service and user guide (PL) | [`generate_project_docs.py`](docs/tools/generate_project_docs.py) |
+| `docs/prezentacja-projektu.pdf` | Project presentation deck, includes the UI screenshots (PL) | [`generate_project_docs.py`](docs/tools/generate_project_docs.py) |
+| `docs/elektronika.pdf` · `electronics.pdf` | Electronics specification — BOM, pinout, protocols, EEPROM map (PL · EN) | [`docs/elektronika.md`](docs/elektronika.md) · [`generate_pdf.py`](docs/tools/generate_pdf.py) |
+
+Generate them with Python ([fpdf2](https://py-pdf.github.io/fpdf2/)):
+
+```bash
+pip install -r docs/tools/requirements.txt
+python docs/tools/generate_pdf.py            # electronics spec (PL + EN)
+python docs/tools/generate_project_docs.py   # project docs + presentation (PL)
+```
+
 ## Requirements
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
